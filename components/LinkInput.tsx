@@ -11,13 +11,26 @@ import {
 import { ClipboardPaste, Save } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { COLORS } from '@/utils/constants';
-import { useLinkStore } from '@/store/linkStore';
+import { TUTORIAL_SAMPLE_URL, useLinkStore } from '@/store/linkStore';
+import { useTutorialStore } from '@/store/tutorialStore';
 
 export function LinkInput() {
   const [url, setUrl] = useState('');
-  const { addLink, isLoading } = useLinkStore();
+  const { addLink, addSampleLink, isLoading } = useLinkStore();
+  const tutorialStage = useTutorialStore((s) => s.stage);
+  const setTutorialStage = useTutorialStore((s) => s.setStage);
+  const setSampleLinkId = useTutorialStore((s) => s.setSampleLinkId);
+  const isTutorialPasteTarget = tutorialStage === 'paste-link';
 
   const handlePaste = async () => {
+    if (isTutorialPasteTarget) {
+      setUrl(TUTORIAL_SAMPLE_URL);
+      const link = await addSampleLink();
+      setSampleLinkId(link.id);
+      setTutorialStage('tap-category');
+      return;
+    }
+
     const text = await Clipboard.getStringAsync();
     setUrl(text);
   };
@@ -51,7 +64,11 @@ export function LinkInput() {
           keyboardType="url"
           editable={!isLoading}
         />
-        <TouchableOpacity style={styles.pasteButton} onPress={handlePaste} disabled={isLoading}>
+        <TouchableOpacity
+          style={[styles.pasteButton, isTutorialPasteTarget && styles.tutorialPasteFocus]}
+          onPress={handlePaste}
+          disabled={isLoading}
+        >
           <ClipboardPaste size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
@@ -102,6 +119,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tutorialPasteFocus: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '14',
   },
   saveButton: {
     backgroundColor: COLORS.primary,

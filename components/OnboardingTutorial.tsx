@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BookmarkPlus, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLinkStore } from '@/store/linkStore';
 import { useCategoryStore } from '@/store/categoryStore';
@@ -12,10 +12,8 @@ export function OnboardingTutorial() {
   const insets = useSafeAreaInsets();
   const loadCategories = useCategoryStore((s) => s.loadCategories);
   const loadLinks = useLinkStore((s) => s.loadLinks);
-  const addSampleLink = useLinkStore((s) => s.addSampleLink);
   const stage = useTutorialStore((s) => s.stage);
   const setStage = useTutorialStore((s) => s.setStage);
-  const setSampleLinkId = useTutorialStore((s) => s.setSampleLinkId);
   const resetTutorial = useTutorialStore((s) => s.reset);
 
   useEffect(() => {
@@ -44,20 +42,14 @@ export function OnboardingTutorial() {
   };
 
   const startTutorial = () => {
-    setStage('add-link');
-  };
-
-  const addExample = async () => {
-    const link = await addSampleLink();
-    setSampleLinkId(link.id);
-    setStage('tap-category');
+    setStage('paste-link');
   };
 
   if (stage === 'idle') {
     return null;
   }
 
-  if (stage === 'tap-category' || stage === 'pick-category' || stage === 'done') {
+  if (stage === 'paste-link' || stage === 'tap-category' || stage === 'pick-category' || stage === 'done') {
     return (
       <View pointerEvents="box-none" style={styles.floatingLayer}>
         <View
@@ -65,6 +57,12 @@ export function OnboardingTutorial() {
           style={[styles.guideBar, { bottom: Math.max(insets.bottom, 16) + 12 }]}
         >
           <View style={styles.guideTextWrap}>
+            {stage === 'paste-link' && (
+              <>
+                <Text style={styles.guideTitle}>Tap the highlighted paste button</Text>
+                <Text style={styles.guideText}>It will load the sample link for this tutorial.</Text>
+              </>
+            )}
             {stage === 'tap-category' && (
               <>
                 <Text style={styles.guideTitle}>Tap the highlighted category badge</Text>
@@ -118,18 +116,6 @@ export function OnboardingTutorial() {
               </View>
             </View>
           )}
-
-          {stage === 'add-link' && (
-            <View style={styles.content}>
-              <View style={styles.stepRow}>
-                <BookmarkPlus size={20} color={COLORS.primary} />
-                <Text style={styles.stepBody}>First, add a sample link to your saved links.</Text>
-              </View>
-              <Pressable style={styles.primaryButton} onPress={addExample}>
-                <Text style={styles.primaryButtonText}>Add Sample Link</Text>
-              </Pressable>
-            </View>
-          )}
         </View>
       </View>
     </Modal>
@@ -140,8 +126,8 @@ function getTitle(step: TutorialStage): string {
   switch (step) {
     case 'ask':
       return 'Tutorial';
-    case 'add-link':
-      return 'Add Link';
+    case 'paste-link':
+      return 'Paste Link';
     case 'tap-category':
     case 'pick-category':
       return 'Change Category';

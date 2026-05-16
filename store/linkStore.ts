@@ -7,6 +7,8 @@ import { classifyLink } from '@/services/categoryClassifier';
 import { checkMultipleLinks } from '@/services/linkChecker';
 import { FORGOTTEN_DAYS_THRESHOLD } from '@/utils/constants';
 
+export const TUTORIAL_SAMPLE_URL = 'https://reactnative.dev/docs/getting-started';
+
 export const useLinkStore = create<LinkStore>((set, get) => ({
   links: [],
   isLoading: false,
@@ -71,8 +73,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
   },
 
   addSampleLink: async () => {
-    const sampleUrl = 'https://reactnative.dev/docs/getting-started';
-    const existingLink = get().links.find((link) => link.url === sampleUrl);
+    const existingLink = get().links.find((link) => link.url === TUTORIAL_SAMPLE_URL);
 
     if (existingLink) {
       return existingLink;
@@ -80,7 +81,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
 
     const sampleLink: SavedLink = {
       id: `tutorial-${Date.now()}`,
-      url: sampleUrl,
+      url: TUTORIAL_SAMPLE_URL,
       platform: 'article',
       category: 'education',
       status: 'unread',
