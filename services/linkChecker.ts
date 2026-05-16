@@ -46,21 +46,20 @@ async function getArchiveUrl(url: string): Promise<string | undefined> {
   return `https://web.archive.org/web/*/${url}`;
 }
 
-export async function checkMultipleLinks(urls: string[]): Promise<Map<string, boolean>> {
-  const results = new Map<string, boolean>();
+export async function checkMultipleLinks(urls: string[]): Promise<Map<string, { isDead: boolean; archiveUrl?: string }>> {
+  const results = new Map<string, { isDead: boolean; archiveUrl?: string }>();
   
-  // Check links in batches to avoid overwhelming the network
   const batchSize = 5;
   for (let i = 0; i < urls.length; i += batchSize) {
     const batch = urls.slice(i, i + batchSize);
     const checks = await Promise.all(
       batch.map(async (url) => {
         const result = await checkLinkStatus(url);
-        return { url, isDead: result.isDead };
+        return { url, ...result };
       })
     );
     
-    checks.forEach(({ url, isDead }) => results.set(url, isDead));
+    checks.forEach(({ url, isDead, archiveUrl }) => results.set(url, { isDead, archiveUrl }));
   }
   
   return results;

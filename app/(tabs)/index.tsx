@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { ShieldAlert, Bookmark } from 'lucide-react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLinkStore } from '@/store/linkStore';
@@ -10,9 +10,10 @@ import { COLORS } from '@/utils/constants';
 import { SavedLink } from '@/store/types';
 
 export default function HomeScreen() {
-  const { links, loadLinks, checkDeadLinks } = useLinkStore();
+  const { links, loadLinks, checkDeadLinks, removeLink } = useLinkStore();
   const { categories, loadCategories, loaded } = useCategoryStore();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     loadLinks();
@@ -24,7 +25,29 @@ export default function HomeScreen() {
     : links;
 
   const handleCheckDeadLinks = async () => {
-    await checkDeadLinks();
+    if (isChecking) return;
+    setIsChecking(true);
+    try {
+      const deadIds = await checkDeadLinks();
+      if (deadIds.length === 0) {
+        Alert.alert('Result', 'No dead links found.');
+      } else {
+        Alert.alert(
+          'Dead Links Found',
+          `${deadIds.length} dead link${deadIds.length > 1 ? 's' : ''} found. Delete them?`,
+          [
+            { text: 'Keep', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => deadIds.forEach((id) => removeLink(id)),
+            },
+          ]
+        );
+      }
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   const renderItem = ({ item }: { item: SavedLink }) => <LinkCard link={item} />;
@@ -45,9 +68,13 @@ export default function HomeScreen() {
         <View>
           <View style={styles.toolbar}>
             <Text style={styles.count}>{filteredLinks.length} links</Text>
-            <TouchableOpacity style={styles.checkButton} onPress={handleCheckDeadLinks}>
-              <ShieldAlert size={16} color={COLORS.primary} />
-              <Text style={styles.checkButtonText}>Check Dead Links</Text>
+            <TouchableOpacity style={styles.checkButton} onPress={handleCheckDeadLinks} disabled={isChecking}>
+              {isChecking ? (
+                <ActivityIndicator size={16} color={COLORS.primary} />
+              ) : (
+                <ShieldAlert size={16} color={COLORS.primary} />
+              )}
+              <Text style={styles.checkButtonText}>{isChecking ? 'Checking...' : 'Check Dead Links'}</Text>
             </TouchableOpacity>
           </View>
           <ScrollView

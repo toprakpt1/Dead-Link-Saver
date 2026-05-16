@@ -4,7 +4,7 @@ import { storage } from '@/utils/storage';
 import { detectPlatform, isValidUrl, normalizeUrl } from '@/services/linkParser';
 import { fetchMetadata, fetchYouTubeMetadata } from '@/services/metadataFetcher';
 import { classifyLink } from '@/services/categoryClassifier';
-import { checkLinkStatus, checkMultipleLinks } from '@/services/linkChecker';
+import { checkMultipleLinks } from '@/services/linkChecker';
 import { FORGOTTEN_DAYS_THRESHOLD } from '@/utils/constants';
 
 export const useLinkStore = create<LinkStore>((set, get) => ({
@@ -120,20 +120,20 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     const urls = links.map((link) => link.url);
     
     const results = await checkMultipleLinks(urls);
+    const deadIds: string[] = [];
     
-    const updatedLinks = await Promise.all(
-      links.map(async (link) => {
-        const isDead = results.get(link.url) || false;
-        if (isDead && !link.isDead) {
-          const { archiveUrl } = await checkLinkStatus(link.url);
-          return { ...link, isDead, archiveUrl };
-        }
-        return link;
-      })
-    );
+    const updatedLinks = links.map((link) => {
+      const result = results.get(link.url);
+      if (result?.isDead && !link.isDead) {
+        deadIds.push(link.id);
+        return { ...link, isDead: true, archiveUrl: result.archiveUrl };
+      }
+      return link;
+    });
     
     set({ links: updatedLinks });
     await storage.saveLinks(updatedLinks);
+    return deadIds;
   },
 
   getForgottenLinks: () => {

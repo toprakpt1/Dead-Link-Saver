@@ -46,7 +46,7 @@ export interface LinkStore {
   updateStatus: (id: string, status: LinkStatus) => void;
   updateLinkCategory: (id: string, category: LinkCategory) => void;
   markAsOpened: (id: string) => void;
-  checkDeadLinks: () => Promise<void>;
+  checkDeadLinks: () => Promise<string[]>;
   getForgottenLinks: () => SavedLink[];
   loadLinks: () => Promise<void>;
 }
