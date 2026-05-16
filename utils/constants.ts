@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   LINKS: '@dead_link_saver:links',
   SETTINGS: '@dead_link_saver:settings',
   CATEGORIES: '@dead_link_saver:categories',
+  ONBOARDING: '@dead_link_saver:onboarding',
 };
 
 export const PLATFORM_PATTERNS = {

@@ -16,6 +16,7 @@ import { CategoryBadge } from './CategoryBadge';
 import { CategoryPicker } from './CategoryPicker';
 import { useLinkStore } from '@/store/linkStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useTutorialStore } from '@/store/tutorialStore';
 
 const PLATFORM_ICONS: Record<LinkPlatform, typeof Film> = {
   youtube: Film,
@@ -88,11 +89,23 @@ interface LinkCardProps {
 export function LinkCard({ link }: LinkCardProps) {
   const { removeLink, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
   const cardSize = useSettingsStore((s) => s.cardSize);
+  const tutorialStage = useTutorialStore((s) => s.stage);
+  const tutorialSampleLinkId = useTutorialStore((s) => s.sampleLinkId);
+  const setTutorialStage = useTutorialStore((s) => s.setStage);
   const s = SIZE_MAP[cardSize];
   const [pickerVisible, setPickerVisible] = useState(false);
+  const isTutorialTarget = tutorialSampleLinkId === link.id;
+  const tutorialCategoryTarget = link.category === 'entertainment' ? 'education' : 'entertainment';
 
   const PlatformIcon = PLATFORM_ICONS[link.platform];
   const StatusIcon = STATUS_ICONS[link.status];
+
+  const closePicker = () => {
+    setPickerVisible(false);
+    if (isTutorialTarget && useTutorialStore.getState().stage === 'pick-category') {
+      setTutorialStage('tap-category');
+    }
+  };
 
   const handlePress = async () => {
     if (link.isDead && link.archiveUrl) {
@@ -147,7 +160,19 @@ export function LinkCard({ link }: LinkCardProps) {
         <Pressable onPress={(e) => { e.stopPropagation(); cycleStatus(); }} hitSlop={8}>
           <StatusIcon size={s.statusSize} color={STATUS_COLORS[link.status]} />
         </Pressable>
-        <Pressable onPress={(e) => { e.stopPropagation(); setPickerVisible(true); }}>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            if (isTutorialTarget && tutorialStage === 'tap-category') {
+              setTutorialStage('pick-category');
+            }
+            setPickerVisible(true);
+          }}
+          style={[
+            base.categoryPressable,
+            isTutorialTarget && tutorialStage === 'tap-category' && base.tutorialCategoryFocus,
+          ]}
+        >
           <CategoryBadge category={link.category} />
         </Pressable>
         {link.isDead && (
@@ -193,8 +218,14 @@ export function LinkCard({ link }: LinkCardProps) {
       <CategoryPicker
         visible={pickerVisible}
         current={link.category}
-        onSelect={(cat) => updateLinkCategory(link.id, cat)}
-        onClose={() => setPickerVisible(false)}
+        tutorialTargetCategory={isTutorialTarget && tutorialStage === 'pick-category' ? tutorialCategoryTarget : undefined}
+        onSelect={(cat) => {
+          updateLinkCategory(link.id, cat);
+          if (isTutorialTarget && tutorialStage === 'pick-category') {
+            setTutorialStage('done');
+          }
+        }}
+        onClose={closePicker}
       />
     </TouchableOpacity>
   );
@@ -211,6 +242,16 @@ const base = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  categoryPressable: {
+    borderRadius: 8,
+  },
+  tutorialCategoryFocus: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    padding: 3,
+    margin: -5,
+    backgroundColor: COLORS.primary + '14',
   },
   thumbnail: {
     width: '100%',

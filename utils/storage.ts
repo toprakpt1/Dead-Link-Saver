@@ -44,6 +44,8 @@ export const storage = {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.LINKS);
       await AsyncStorage.removeItem(STORAGE_KEYS.SETTINGS);
+      await AsyncStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+      await AsyncStorage.removeItem(STORAGE_KEYS.ONBOARDING);
     } catch (error) {
       console.error('Failed to clear storage:', error);
       throw error;

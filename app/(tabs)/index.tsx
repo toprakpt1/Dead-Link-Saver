@@ -147,21 +147,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterBar: {
-    maxHeight: 44,
+    minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   filterContent: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     gap: 6,
     alignItems: 'center',
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
+    minHeight: 36,
     borderRadius: 6,
     borderWidth: 1,
+    justifyContent: 'center',
     borderColor: COLORS.border,
   },
   filterChipActive: {

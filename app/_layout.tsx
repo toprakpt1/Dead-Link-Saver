@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useLinkStore } from '@/store/linkStore';
 import { COLORS } from '@/utils/constants';
+import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
@@ -36,19 +38,28 @@ export default function RootLayout() {
   }, [addLink]);
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: COLORS.surface,
-        },
-        headerTintColor: COLORS.text,
-        headerShadowVisible: false,
-        contentStyle: {
-          backgroundColor: COLORS.background,
-        },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <View style={styles.container}>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: COLORS.surface,
+          },
+          headerTintColor: COLORS.text,
+          headerShadowVisible: false,
+          contentStyle: {
+            backgroundColor: COLORS.background,
+          },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+      <OnboardingTutorial />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

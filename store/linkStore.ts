@@ -70,6 +70,37 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     }
   },
 
+  addSampleLink: async () => {
+    const sampleUrl = 'https://reactnative.dev/docs/getting-started';
+    const existingLink = get().links.find((link) => link.url === sampleUrl);
+
+    if (existingLink) {
+      return existingLink;
+    }
+
+    const sampleLink: SavedLink = {
+      id: `tutorial-${Date.now()}`,
+      url: sampleUrl,
+      platform: 'article',
+      category: 'education',
+      status: 'unread',
+      metadata: {
+        title: 'React Native Getting Started',
+        description: 'A sample link for learning how saved links and categories work.',
+        author: 'React Native',
+      },
+      isDead: false,
+      isFavorite: false,
+      createdAt: Date.now(),
+      openCount: 0,
+    };
+
+    const updatedLinks = [sampleLink, ...get().links];
+    set({ links: updatedLinks });
+    await storage.saveLinks(updatedLinks);
+    return sampleLink;
+  },
+
   removeLink: (id: string) => {
     const updatedLinks = get().links.filter((link) => link.id !== id);
     set({ links: updatedLinks });

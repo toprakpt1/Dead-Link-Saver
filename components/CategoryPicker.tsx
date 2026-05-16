@@ -8,9 +8,10 @@ interface CategoryPickerProps {
   current: string;
   onSelect: (category: string) => void;
   onClose: () => void;
+  tutorialTargetCategory?: string;
 }
 
-export function CategoryPicker({ visible, current, onSelect, onClose }: CategoryPickerProps) {
+export function CategoryPicker({ visible, current, onSelect, onClose, tutorialTargetCategory }: CategoryPickerProps) {
   const categories = useCategoryStore((s) => s.categories);
 
   return (
@@ -20,10 +21,16 @@ export function CategoryPicker({ visible, current, onSelect, onClose }: Category
           <Text style={styles.title}>Change Category</Text>
           {categories.map((cat) => {
             const selected = cat.id === current;
+            const tutorialTarget = cat.id === tutorialTargetCategory;
             return (
               <Pressable
                 key={cat.id}
-                style={[styles.row, selected && { backgroundColor: cat.color + '20' }]}
+                style={[
+                  styles.row,
+                  selected && { backgroundColor: cat.color + '20' },
+                  tutorialTarget && styles.tutorialTarget,
+                  tutorialTarget && { borderColor: cat.color },
+                ]}
                 onPress={() => {
                   onSelect(cat.id);
                   onClose();
@@ -69,6 +76,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   dot: {
     width: 10,
@@ -83,5 +92,8 @@ const styles = StyleSheet.create({
   check: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  tutorialTarget: {
+    backgroundColor: COLORS.primary + '12',
   },
 });

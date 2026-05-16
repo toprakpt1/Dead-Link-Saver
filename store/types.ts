@@ -41,6 +41,7 @@ export interface LinkStore {
   links: SavedLink[];
   isLoading: boolean;
   addLink: (url: string) => Promise<void>;
+  addSampleLink: () => Promise<SavedLink>;
   removeLink: (id: string) => void;
   toggleFavorite: (id: string) => void;
   updateStatus: (id: string, status: LinkStatus) => void;
