@@ -6,12 +6,10 @@
     "orientation": "portrait",
     "scheme": "deadlinksaver",
     "userInterfaceStyle": "automatic",
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deadlinksaver.app"
     },
-
     "android": {
       "package": "com.deadlinksaver.app",
       "adaptiveIcon": {
@@ -20,7 +18,9 @@
       "intentFilters": [
         {
           "action": "SEND",
-          "category": ["DEFAULT"],
+          "category": [
+            "DEFAULT"
+          ],
           "data": [
             {
               "mimeType": "text/plain"
@@ -29,9 +29,14 @@
         }
       ]
     },
-
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0e35c664-64b6-4463-b526-5d4c49ed9fd6"
+      }
+    }
   }
 }
