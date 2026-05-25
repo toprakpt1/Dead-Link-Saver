@@ -54,3 +54,9 @@ web-build/
 .env
 .env.local
 .env.*.local
+
+# vscode
+.vscode/
+
+# .agents
+.agents/
