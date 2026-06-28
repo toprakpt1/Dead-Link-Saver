@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { ShieldAlert, Bookmark } from 'lucide-react-native';
+import { ShieldAlert, Bookmark, Star } from 'lucide-react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLinkStore } from '@/store/linkStore';
 import { useCategoryStore } from '@/store/categoryStore';
@@ -13,6 +13,7 @@ export default function HomeScreen() {
   const { links, loadLinks, checkDeadLinks, removeLink } = useLinkStore();
   const { categories, loadCategories, loaded } = useCategoryStore();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
@@ -20,9 +21,9 @@ export default function HomeScreen() {
     loadCategories();
   }, []);
 
-  const filteredLinks = selectedCategory
-    ? links.filter((l) => l.category === selectedCategory)
-    : links;
+  const filteredLinks = links
+    .filter((l) => showFavoritesOnly ? l.isFavorite : true)
+    .filter((l) => selectedCategory ? l.category === selectedCategory : true);
 
   const handleCheckDeadLinks = async () => {
     if (isChecking) return;
@@ -55,8 +56,12 @@ export default function HomeScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Bookmark size={48} color={COLORS.textMuted} />
-      <Text style={styles.emptyText}>No saved links yet</Text>
-      <Text style={styles.emptySubtext}>Paste a link above to get started</Text>
+      <Text style={styles.emptyText}>
+        {showFavoritesOnly ? 'No favorite links yet' : 'No saved links yet'}
+      </Text>
+      <Text style={styles.emptySubtext}>
+        {showFavoritesOnly ? 'Star a link to add it here' : 'Paste a link above to get started'}
+      </Text>
     </View>
   );
 
@@ -84,10 +89,22 @@ export default function HomeScreen() {
             contentContainerStyle={styles.filterContent}
           >
             <TouchableOpacity
-              style={[styles.filterChip, selectedCategory === null && styles.filterChipActive]}
-              onPress={() => setSelectedCategory(null)}
+              style={[styles.filterChip, selectedCategory === null && !showFavoritesOnly && styles.filterChipActive]}
+              onPress={() => { setSelectedCategory(null); setShowFavoritesOnly(false); }}
             >
-              <Text style={[styles.filterChipText, selectedCategory === null && styles.filterChipTextActive]}>All</Text>
+              <Text style={[styles.filterChipText, selectedCategory === null && !showFavoritesOnly && styles.filterChipTextActive]}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterChip, showFavoritesOnly && styles.filterChipFav]}
+              onPress={() => setShowFavoritesOnly((prev) => !prev)}
+            >
+              <View style={styles.filterChipRow}>
+                <Star size={14} color={showFavoritesOnly ? COLORS.warning : COLORS.textMuted}
+                      fill={showFavoritesOnly ? COLORS.warning : 'none'} />
+                <Text style={[styles.filterChipText, showFavoritesOnly && styles.filterChipTextFav]}>
+                  Favoriler ({links.filter((l) => l.isFavorite).length})
+                </Text>
+              </View>
             </TouchableOpacity>
             {categories.map((cat) => {
               const count = links.filter((l) => l.category === cat.id).length;
@@ -170,6 +187,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     backgroundColor: COLORS.primary + '20',
   },
+  filterChipFav: {
+    borderColor: COLORS.warning,
+    backgroundColor: COLORS.warning + '20',
+  },
   filterChipText: {
     fontSize: 13,
     color: COLORS.textMuted,
@@ -177,6 +198,14 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: COLORS.primary,
+  },
+  filterChipTextFav: {
+    color: COLORS.warning,
+  },
+  filterChipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   listContent: {
     paddingVertical: 8,
