@@ -9,9 +9,13 @@ import { FORGOTTEN_DAYS_THRESHOLD } from '@/utils/constants';
 
 export const TUTORIAL_SAMPLE_URL = 'https://reactnative.dev/docs/getting-started';
 
+let deleteTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useLinkStore = create<LinkStore>((set, get) => ({
   links: [],
   isLoading: false,
+  deletedLink: null,
+  checkProgress: null,
 
   loadLinks: async () => {
     set({ isLoading: true });
@@ -108,6 +112,36 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     storage.saveLinks(updatedLinks);
   },
 
+  softDelete: (id: string) => {
+    const link = get().links.find((l) => l.id === id);
+    if (!link) return;
+
+    if (deleteTimer) clearTimeout(deleteTimer);
+
+    const updatedLinks = get().links.filter((l) => l.id !== id);
+    set({ links: updatedLinks, deletedLink: link });
+    storage.saveLinks(updatedLinks);
+
+    deleteTimer = setTimeout(() => {
+      set({ deletedLink: null });
+      deleteTimer = null;
+    }, 5000);
+  },
+
+  undoDelete: () => {
+    const deletedLink = get().deletedLink;
+    if (!deletedLink) return;
+
+    if (deleteTimer) {
+      clearTimeout(deleteTimer);
+      deleteTimer = null;
+    }
+
+    const updatedLinks = [deletedLink, ...get().links];
+    set({ links: updatedLinks, deletedLink: null });
+    storage.saveLinks(updatedLinks);
+  },
+
   toggleFavorite: (id: string) => {
     const updatedLinks = get().links.map((link) =>
       link.id === id ? { ...link, isFavorite: !link.isFavorite } : link
@@ -150,10 +184,15 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
   checkDeadLinks: async () => {
     const links = get().links;
     const urls = links.map((link) => link.url);
-    
-    const results = await checkMultipleLinks(urls);
+
+    set({ checkProgress: { checked: 0, total: urls.length } });
+
+    const results = await checkMultipleLinks(urls, (checked, total) => {
+      set({ checkProgress: { checked, total } });
+    });
+
     const deadIds: string[] = [];
-    
+
     const updatedLinks = links.map((link) => {
       const result = results.get(link.url);
       if (result?.isDead && !link.isDead) {
@@ -162,8 +201,8 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
       }
       return link;
     });
-    
-    set({ links: updatedLinks });
+
+    set({ links: updatedLinks, checkProgress: null });
     await storage.saveLinks(updatedLinks);
     return deadIds;
   },

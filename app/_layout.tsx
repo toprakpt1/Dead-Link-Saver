@@ -5,6 +5,7 @@ import * as Linking from 'expo-linking';
 import { useLinkStore } from '@/store/linkStore';
 import { COLORS } from '@/utils/constants';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
+import { UndoToast } from '@/components/UndoToast';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
@@ -54,6 +55,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
       <OnboardingTutorial />
+      <UndoToast />
     </View>
   );
 }

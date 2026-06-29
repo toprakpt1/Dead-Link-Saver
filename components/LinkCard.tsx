@@ -87,7 +87,7 @@ interface LinkCardProps {
 }
 
 export function LinkCard({ link }: LinkCardProps) {
-  const { removeLink, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
+  const { softDelete, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
   const cardSize = useSettingsStore((s) => s.cardSize);
   const tutorialStage = useTutorialStore((s) => s.stage);
   const tutorialSampleLinkId = useTutorialStore((s) => s.sampleLinkId);
@@ -131,10 +131,7 @@ export function LinkCard({ link }: LinkCardProps) {
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete Link', 'Are you sure you want to delete this link?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => removeLink(link.id) },
-    ]);
+    softDelete(link.id);
   };
 
   const cycleStatus = () => {

@@ -10,11 +10,11 @@ import { COLORS } from '@/utils/constants';
 import { SavedLink } from '@/store/types';
 
 export default function HomeScreen() {
-  const { links, loadLinks, checkDeadLinks, removeLink } = useLinkStore();
+  const { links, loadLinks, checkDeadLinks, removeLink, checkProgress } = useLinkStore();
   const { categories, loadCategories, loaded } = useCategoryStore();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  const isChecking = checkProgress !== null;
 
   useEffect(() => {
     loadLinks();
@@ -27,7 +27,6 @@ export default function HomeScreen() {
 
   const handleCheckDeadLinks = async () => {
     if (isChecking) return;
-    setIsChecking(true);
     try {
       const deadIds = await checkDeadLinks();
       if (deadIds.length === 0) {
@@ -46,8 +45,8 @@ export default function HomeScreen() {
           ]
         );
       }
-    } finally {
-      setIsChecking(false);
+    } catch (error) {
+      console.error('Dead link check failed:', error);
     }
   };
 
@@ -79,7 +78,9 @@ export default function HomeScreen() {
               ) : (
                 <ShieldAlert size={16} color={COLORS.primary} />
               )}
-              <Text style={styles.checkButtonText}>{isChecking ? 'Checking...' : 'Check Dead Links'}</Text>
+              <Text style={styles.checkButtonText}>
+                {isChecking ? `${checkProgress!.checked}/${checkProgress!.total} checked` : 'Check Dead Links'}
+              </Text>
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -102,7 +103,7 @@ export default function HomeScreen() {
                 <Star size={14} color={showFavoritesOnly ? COLORS.warning : COLORS.textMuted}
                       fill={showFavoritesOnly ? COLORS.warning : 'none'} />
                 <Text style={[styles.filterChipText, showFavoritesOnly && styles.filterChipTextFav]}>
-                  Favoriler ({links.filter((l) => l.isFavorite).length})
+                  Favorites ({links.filter((l) => l.isFavorite).length})
                 </Text>
               </View>
             </TouchableOpacity>
