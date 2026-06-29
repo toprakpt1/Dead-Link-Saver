@@ -50,6 +50,9 @@ export interface LinkStore {
   toggleFavorite: (id: string) => void;
   updateStatus: (id: string, status: LinkStatus) => void;
   updateLinkCategory: (id: string, category: LinkCategory) => void;
+  batchDelete: (ids: string[]) => void;
+  batchUpdateCategory: (ids: string[], category: LinkCategory) => void;
+  batchCheckDeadLinks: (ids: string[], onProgress?: (checked: number, total: number) => void) => Promise<string[]>;
   markAsOpened: (id: string) => void;
   checkDeadLinks: () => Promise<string[]>;
   getForgottenLinks: () => SavedLink[];

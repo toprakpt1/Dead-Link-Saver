@@ -166,6 +166,49 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     storage.saveLinks(updatedLinks);
   },
 
+  batchDelete: (ids: string[]) => {
+    const updatedLinks = get().links.filter((link) => !ids.includes(link.id));
+    set({ links: updatedLinks });
+    storage.saveLinks(updatedLinks);
+  },
+
+  batchUpdateCategory: (ids: string[], category) => {
+    const updatedLinks = get().links.map((link) =>
+      ids.includes(link.id) ? { ...link, category } : link
+    );
+    set({ links: updatedLinks });
+    storage.saveLinks(updatedLinks);
+  },
+
+  batchCheckDeadLinks: async (ids: string[], onProgress) => {
+    const allLinks = get().links;
+    const targetLinks = allLinks.filter((l) => ids.includes(l.id));
+    const urls = targetLinks.map((l) => l.url);
+
+    set({ checkProgress: { checked: 0, total: urls.length } });
+
+    const results = await checkMultipleLinks(urls, (checked, total) => {
+      set({ checkProgress: { checked, total } });
+      onProgress?.(checked, total);
+    });
+
+    const deadIds: string[] = [];
+
+    const updatedLinks = allLinks.map((link) => {
+      if (!ids.includes(link.id)) return link;
+      const result = results.get(link.url);
+      if (result?.isDead && !link.isDead) {
+        deadIds.push(link.id);
+        return { ...link, isDead: true, archiveUrl: result.archiveUrl };
+      }
+      return link;
+    });
+
+    set({ links: updatedLinks, checkProgress: null });
+    await storage.saveLinks(updatedLinks);
+    return deadIds;
+  },
+
   markAsOpened: (id: string) => {
     const updatedLinks = get().links.map((link) =>
       link.id === id

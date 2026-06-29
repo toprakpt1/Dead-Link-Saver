@@ -5,7 +5,7 @@
 - **Metin arama** — Başlık ve URL üzerinde anlık arama. Kategori filtrelemesinin yanında text search olmazsa 100+ linkte kayboluyorsun.
 - **Sıralama seçenekleri** — Tarih (eskiden yeniye/yeniden eskiye), alfabetik, favoriler, platform, durum (unread/watched/saved).
 - **Favoriler filtresi** — Yıldızlı linkleri tek dokunuşla gösterme, ayrı bir "Favoriler" görünümü. [YAPILDI]
-- **Bulk işlemler** — Seçim modu (checkbox) ile toplu silme, kategori değiştirme, dead-link kontrolü.
+- **Bulk işlemler** — Seçim modu (checkbox) ile toplu silme, kategori değiştirme, dead-link kontrolü. [YAPILDI]
 - **Dead link kontrolünde ilerleme göstergesi** — "5/20 kontrol edildi" gibi anlık feedback. Büyük listelerde kullanıcı ne olup bittiğini anlamıyor. [YAPILDI]
 
 ## Orta Öncelik

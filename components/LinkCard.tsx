@@ -9,7 +9,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { Star, Trash2, Unlink, Film, MessageCircle, MessageSquare, Code2, Camera, BookOpen, FileText, Globe, Eye, BookmarkPlus, CheckCircle2 } from 'lucide-react-native';
+import { Star, Trash2, Unlink, Film, MessageCircle, MessageSquare, Code2, Camera, BookOpen, FileText, Globe, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare } from 'lucide-react-native';
 import { SavedLink, LinkPlatform, LinkStatus, CardSize } from '@/store/types';
 import { COLORS } from '@/utils/constants';
 import { CategoryBadge } from './CategoryBadge';
@@ -84,9 +84,12 @@ const SIZE_MAP: Record<CardSize, {
 
 interface LinkCardProps {
   link: SavedLink;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function LinkCard({ link }: LinkCardProps) {
+export function LinkCard({ link, selectionMode = false, isSelected = false, onToggleSelect }: LinkCardProps) {
   const { softDelete, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
   const cardSize = useSettingsStore((s) => s.cardSize);
   const tutorialStage = useTutorialStore((s) => s.stage);
@@ -108,6 +111,10 @@ export function LinkCard({ link }: LinkCardProps) {
   };
 
   const handlePress = async () => {
+    if (selectionMode) {
+      onToggleSelect?.(link.id);
+      return;
+    }
     if (link.isDead && link.archiveUrl) {
       Alert.alert(
         'Dead Link',
@@ -145,6 +152,7 @@ export function LinkCard({ link }: LinkCardProps) {
     <TouchableOpacity
       style={[
         base.card,
+        isSelected && base.cardSelected,
         {
           padding: s.cardPadding,
           marginVertical: s.cardMarginV,
@@ -154,6 +162,15 @@ export function LinkCard({ link }: LinkCardProps) {
       activeOpacity={0.7}
     >
       <View style={[base.header, { gap: s.headerGap, marginBottom: s.headerMb }]}>
+        {selectionMode && (
+          <Pressable onPress={(e) => { e.stopPropagation(); onToggleSelect?.(link.id); }} hitSlop={8}>
+            {isSelected ? (
+              <CheckSquare size={s.statusSize} color={COLORS.primary} />
+            ) : (
+              <Square size={s.statusSize} color={COLORS.textMuted} />
+            )}
+          </Pressable>
+        )}
         <Pressable onPress={(e) => { e.stopPropagation(); cycleStatus(); }} hitSlop={8}>
           <StatusIcon size={s.statusSize} color={STATUS_COLORS[link.status]} />
         </Pressable>
@@ -203,14 +220,16 @@ export function LinkCard({ link }: LinkCardProps) {
           <PlatformIcon size={s.platformSize} color={COLORS.textMuted} />
           <Text style={[base.platform, { fontSize: s.platformSize }]}>{PLATFORM_LABELS[link.platform]}</Text>
         </View>
-        <View style={[base.actions, { gap: s.actionGap }]}>
-          <Pressable onPress={(e) => { e.stopPropagation(); toggleFavorite(link.id); }} style={[base.actionButton, { padding: s.actionPad }]}>
-            <Star size={s.iconSize} color={link.isFavorite ? COLORS.warning : COLORS.textMuted} fill={link.isFavorite ? COLORS.warning : 'none'} />
-          </Pressable>
-          <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={[base.actionButton, { padding: s.actionPad }]}>
-            <Trash2 size={s.iconSize} color={COLORS.textMuted} />
-          </Pressable>
-        </View>
+        {!selectionMode && (
+          <View style={[base.actions, { gap: s.actionGap }]}>
+            <Pressable onPress={(e) => { e.stopPropagation(); toggleFavorite(link.id); }} style={[base.actionButton, { padding: s.actionPad }]}>
+              <Star size={s.iconSize} color={link.isFavorite ? COLORS.warning : COLORS.textMuted} fill={link.isFavorite ? COLORS.warning : 'none'} />
+            </Pressable>
+            <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={[base.actionButton, { padding: s.actionPad }]}>
+              <Trash2 size={s.iconSize} color={COLORS.textMuted} />
+            </Pressable>
+          </View>
+        )}
       </View>
       <CategoryPicker
         visible={pickerVisible}
@@ -235,6 +254,10 @@ const base = StyleSheet.create({
     marginHorizontal: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  cardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '08',
   },
   header: {
     flexDirection: 'row',
