@@ -22,6 +22,18 @@ export function detectPlatform(url: string): LinkPlatform {
   if (PLATFORM_PATTERNS.medium.test(normalizedUrl)) {
     return 'medium';
   }
+  if (PLATFORM_PATTERNS.twitch.test(normalizedUrl)) {
+    return 'twitch';
+  }
+  if (PLATFORM_PATTERNS.discord.test(normalizedUrl)) {
+    return 'discord';
+  }
+  if (PLATFORM_PATTERNS.spotify.test(normalizedUrl)) {
+    return 'spotify';
+  }
+  if (PLATFORM_PATTERNS.linkedin.test(normalizedUrl)) {
+    return 'linkedin';
+  }
 
   // Article detection: common blog/news platforms
   if (

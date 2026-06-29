@@ -9,7 +9,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { Star, Trash2, Unlink, Film, MessageCircle, MessageSquare, Code2, Camera, BookOpen, FileText, Globe, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare } from 'lucide-react-native';
+import { Star, Trash2, Unlink, Film, MessageCircle, MessageSquare, Code2, Camera, BookOpen, FileText, Globe, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare, Tv, Headphones, Music, Briefcase } from 'lucide-react-native';
 import { SavedLink, LinkPlatform, LinkStatus, CardSize } from '@/store/types';
 import { COLORS } from '@/utils/constants';
 import { CategoryBadge } from './CategoryBadge';
@@ -27,6 +27,10 @@ const PLATFORM_ICONS: Record<LinkPlatform, typeof Film> = {
   medium: BookOpen,
   article: FileText,
   unknown: Globe,
+  twitch: Tv,
+  discord: Headphones,
+  spotify: Music,
+  linkedin: Briefcase,
 };
 
 const PLATFORM_LABELS: Record<LinkPlatform, string> = {
@@ -38,6 +42,10 @@ const PLATFORM_LABELS: Record<LinkPlatform, string> = {
   medium: 'Article',
   article: 'Blog',
   unknown: 'Link',
+  twitch: 'Stream',
+  discord: 'Chat',
+  spotify: 'Music',
+  linkedin: 'Profile',
 };
 
 const STATUS_ICONS: Record<LinkStatus, typeof Eye> = {

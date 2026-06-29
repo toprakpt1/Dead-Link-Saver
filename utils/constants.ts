@@ -28,6 +28,10 @@ export const PLATFORM_PATTERNS = {
   github: /github\.com\/[^\/]+\/[^\/]+/,
   instagram: /instagram\.com\/(?:p|reel)\/[^\/]+/,
   medium: /medium\.com\/@?[^\/]+\/[^\/]+/,
+  twitch: /twitch\.tv\/[^\/]+/,
+  discord: /discord(?:app)?\.com\/invite\/[^\/]+/,
+  spotify: /(?:open\.)?spotify\.com\/(?:track|album|playlist|episode|show|artist)\/[a-zA-Z0-9]+/,
+  linkedin: /linkedin\.com\/(?:in|company|posts)\/[^\/]+/,
 };
 
 export const CATEGORY_KEYWORDS = {

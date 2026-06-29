@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
-import { Columns2, Columns3, AlignJustify, Trash2, Plus } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Columns2, Columns3, AlignJustify, Trash2, Plus, RotateCw } from 'lucide-react-native';
 import { CardSize } from '@/store/types';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useCategoryStore } from '@/store/categoryStore';
-import { COLORS } from '@/utils/constants';
+import { useLinkStore } from '@/store/linkStore';
+import { useTutorialStore } from '@/store/tutorialStore';
+import { COLORS, STORAGE_KEYS } from '@/utils/constants';
 
 const SIZES: { key: CardSize; label: string; icon: typeof Columns2 }[] = [
   { key: 'small', label: 'Small', icon: Columns3 },
@@ -31,10 +34,46 @@ export default function SettingsScreen() {
 
   const handleRemove = (id: string, name: string) => {
     if (id === 'random') return;
-    Alert.alert('Delete Category', `Delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => removeCategory(id) },
-    ]);
+
+    const links = useLinkStore.getState().links;
+    const linksInCategory = links.filter((l) => l.category === id);
+
+    if (linksInCategory.length === 0) {
+      removeCategory(id);
+      return;
+    }
+
+    const linkIds = linksInCategory.map((l) => l.id);
+
+    Alert.alert(
+      'Delete Category',
+      `"${name}" has ${linksInCategory.length} link${linksInCategory.length > 1 ? 's' : ''}. What should happen to them?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Move to Random',
+          onPress: () => {
+            useLinkStore.getState().batchUpdateCategory(linkIds, 'random');
+            removeCategory(id);
+          },
+        },
+        {
+          text: 'Delete Links',
+          style: 'destructive',
+          onPress: () => {
+            useLinkStore.getState().batchDelete(linkIds);
+            removeCategory(id);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReplayTutorial = async () => {
+    await AsyncStorage.removeItem(STORAGE_KEYS.ONBOARDING);
+    const { reset, setStage } = useTutorialStore.getState();
+    reset();
+    setStage('ask');
   };
 
   return (
@@ -92,6 +131,15 @@ export default function SettingsScreen() {
             </View>
           ))}
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Tutorial</Text>
+        <Text style={styles.sectionSub}>Replay the onboarding tutorial</Text>
+        <Pressable style={styles.replayButton} onPress={handleReplayTutorial}>
+          <RotateCw size={16} color={COLORS.primary} />
+          <Text style={styles.replayButtonText}>Show Tutorial Again</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -195,5 +243,21 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 6,
+  },
+  replayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    alignSelf: 'flex-start',
+  },
+  replayButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 });

@@ -6,6 +6,7 @@ import { useLinkStore } from '@/store/linkStore';
 import { COLORS } from '@/utils/constants';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { UndoToast } from '@/components/UndoToast';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
@@ -40,6 +41,7 @@ export default function RootLayout() {
 
   return (
     <View style={styles.container}>
+      <OfflineBanner />
       <Stack
         screenOptions={{
           headerStyle: {

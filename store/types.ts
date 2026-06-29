@@ -1,4 +1,4 @@
-export type LinkPlatform = 'youtube' | 'reddit' | 'twitter' | 'article' | 'github' | 'instagram' | 'medium' | 'unknown';
+export type LinkPlatform = 'youtube' | 'reddit' | 'twitter' | 'article' | 'github' | 'instagram' | 'medium' | 'unknown' | 'twitch' | 'discord' | 'spotify' | 'linkedin';
 
 export type LinkCategory = string;
 

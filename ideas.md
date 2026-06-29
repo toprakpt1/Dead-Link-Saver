@@ -15,10 +15,11 @@
 - **"Unutulanlar" tabında bildirim rozeti** — Tab ikonunda kaç tane unutulmuş link olduğunu göster.
 - **Kategori otomatik sınıflandırma genişletmesi** — Kullanıcının oluşturduğu custom kategoriler de otomatik sınıflandırmada kullanılsın (şu an sadece DEFAULT_CATEGORIES kullanılıyor).
 - **Boş liste durumları** — Her tab için özel boş liste mesajı ve görseli (şu an sadece ana sayfada var).
+- **Uygulamaya Ses Eklenecek**  uygulamaya ses eklenmesi, link kaydedildiğinde, silindiğinde veya favoriye eklendiğinde sesli bildirim.
 
 ## Düşük Öncelik / Küçük Dokunuşlar
 
-- **Onboarding'i tekrar izleme** — Ayarlara "Tutorial'ı tekrar göster" butonu.
+- **Onboarding'i tekrar izleme** — Ayarlara "Tutorial'ı tekrar göster" butonu. [YAPILDI]
 - **Haptic feedback** — Link kaydedince, silince, favoriye ekleyince titreşim.
 - **Link kaydedilince otomatik scroll to top** — Yeni link listenin en üstüne ekleniyor ama oraya kaydırmıyor.
 - **Dead link badge'e tıklayınca direkt Wayback Machine** — Onay sormadan direkt archive.org'da aç.
