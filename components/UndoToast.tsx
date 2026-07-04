@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLinkStore } from '@/store/linkStore';
 import { COLORS } from '@/utils/constants';
+import { hapticUndo } from '@/utils/haptics';
 
 export function UndoToast() {
   const deletedLink = useLinkStore((s) => s.deletedLink);
@@ -32,7 +33,7 @@ export function UndoToast() {
       <Text style={styles.text} numberOfLines={1}>
         Deleted: {deletedLink?.metadata.title ?? 'link'}
       </Text>
-      <TouchableOpacity onPress={undoDelete} style={styles.undoButton}>
+      <TouchableOpacity onPress={() => { hapticUndo(); undoDelete(); }} style={styles.undoButton}>
         <Text style={styles.undoText}>Undo</Text>
       </TouchableOpacity>
     </Animated.View>

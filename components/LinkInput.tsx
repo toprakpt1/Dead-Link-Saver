@@ -13,6 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import { COLORS } from '@/utils/constants';
 import { TUTORIAL_SAMPLE_URL, useLinkStore } from '@/store/linkStore';
 import { useTutorialStore } from '@/store/tutorialStore';
+import { hapticSave } from '@/utils/haptics';
 
 export function LinkInput() {
   const [url, setUrl] = useState('');
@@ -43,6 +44,7 @@ export function LinkInput() {
 
     try {
       await addLink(url);
+      hapticSave();
       setUrl('');
       Alert.alert('Success', 'Link saved successfully');
     } catch (error) {

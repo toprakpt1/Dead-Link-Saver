@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { CategoryPicker } from './CategoryPicker';
 import { useLinkStore } from '@/store/linkStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTutorialStore } from '@/store/tutorialStore';
+import { hapticDelete, hapticFavorite } from '@/utils/haptics';
 
 const PLATFORM_ICONS: Record<LinkPlatform, typeof Film> = {
   youtube: Film,
@@ -107,6 +108,7 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
   const [pickerVisible, setPickerVisible] = useState(false);
   const isTutorialTarget = tutorialSampleLinkId === link.id;
   const tutorialCategoryTarget = link.category === 'entertainment' ? 'education' : 'entertainment';
+  const badgePressedRef = useRef(false);
 
   const PlatformIcon = PLATFORM_ICONS[link.platform];
   const StatusIcon = STATUS_ICONS[link.status];
@@ -119,6 +121,10 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
   };
 
   const handlePress = async () => {
+    if (badgePressedRef.current) {
+      badgePressedRef.current = false;
+      return;
+    }
     if (selectionMode) {
       onToggleSelect?.(link.id);
       return;
@@ -146,6 +152,7 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
   };
 
   const handleDelete = () => {
+    hapticDelete();
     softDelete(link.id);
   };
 
@@ -198,10 +205,18 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
           <CategoryBadge category={link.category} />
         </Pressable>
         {link.isDead && (
-          <View style={[base.deadBadge, { gap: s.deadGap, paddingHorizontal: s.deadHPad, paddingVertical: s.deadVPad }]}>
+          <Pressable
+            onPress={() => {
+              badgePressedRef.current = true;
+              const url = link.archiveUrl || `https://web.archive.org/web/*/${link.url}`;
+              Linking.openURL(url);
+              markAsOpened(link.id);
+            }}
+            style={[base.deadBadge, { gap: s.deadGap, paddingHorizontal: s.deadHPad, paddingVertical: s.deadVPad }]}
+          >
             <Unlink size={s.deadSize} color={COLORS.error} />
             <Text style={[base.deadText, { fontSize: s.deadSize }]}>Dead</Text>
-          </View>
+          </Pressable>
         )}
       </View>
 
@@ -230,7 +245,7 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
         </View>
         {!selectionMode && (
           <View style={[base.actions, { gap: s.actionGap }]}>
-            <Pressable onPress={(e) => { e.stopPropagation(); toggleFavorite(link.id); }} style={[base.actionButton, { padding: s.actionPad }]}>
+            <Pressable onPress={(e) => { e.stopPropagation(); hapticFavorite(); toggleFavorite(link.id); }} style={[base.actionButton, { padding: s.actionPad }]}>
               <Star size={s.iconSize} color={link.isFavorite ? COLORS.warning : COLORS.textMuted} fill={link.isFavorite ? COLORS.warning : 'none'} />
             </Pressable>
             <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={[base.actionButton, { padding: s.actionPad }]}>

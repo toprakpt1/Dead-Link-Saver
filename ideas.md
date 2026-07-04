@@ -2,7 +2,7 @@
 
 ## Yüksek Öncelik
 
-- **Metin arama** — Başlık ve URL üzerinde anlık arama. Kategori filtrelemesinin yanında text search olmazsa 100+ linkte kayboluyorsun.
+- **Metin arama** — Başlık ve URL üzerinde anlık arama. Kategori filtrelemesinin yanında text search olmazsa 100+ linkte kayboluyorsun. [YAPILDI]
 - **Sıralama seçenekleri** — Tarih (eskiden yeniye/yeniden eskiye), alfabetik, favoriler, platform, durum (unread/watched/saved).
 - **Favoriler filtresi** — Yıldızlı linkleri tek dokunuşla gösterme, ayrı bir "Favoriler" görünümü. [YAPILDI]
 - **Bulk işlemler** — Seçim modu (checkbox) ile toplu silme, kategori değiştirme, dead-link kontrolü. [YAPILDI]
@@ -20,9 +20,9 @@
 ## Düşük Öncelik / Küçük Dokunuşlar
 
 - **Onboarding'i tekrar izleme** — Ayarlara "Tutorial'ı tekrar göster" butonu. [YAPILDI]
-- **Haptic feedback** — Link kaydedince, silince, favoriye ekleyince titreşim.
+- **Haptic feedback** — Link kaydedince, silince, favoriye ekleyince titreşim. [YAPILDI]
 - **Link kaydedilince otomatik scroll to top** — Yeni link listenin en üstüne ekleniyor ama oraya kaydırmıyor.
-- **Dead link badge'e tıklayınca direkt Wayback Machine** — Onay sormadan direkt archive.org'da aç.
-- **Offline indikatörü** — İnternet yoksa uyarı gösterme.
-- **Kategori silinince linkleri uyarma** — Bir kategoriyi silince o kategorideki linklere ne olacağını sormalı.
-- **Platform ikonlarını genişletme** — Daha fazla platform desteği (Twitch, Discord, Spotify, vs.).
+- **Dead link badge'e tıklayınca direkt Wayback Machine** — Onay sormadan direkt archive.org'da aç. [YAPILDI]
+- **Offline indikatörü** — İnternet yoksa uyarı gösterme. 
+- **Kategori silinince linkleri uyarma** — Bir kategoriyi silince o kategorideki linklere ne olacağını sormalı. [YAPILDI]
+- **Platform ikonlarını genişletme** — Daha fazla platform desteği (Twitch, Discord, Spotify, vs.). [YAPILDI]

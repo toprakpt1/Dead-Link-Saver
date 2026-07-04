@@ -5,9 +5,11 @@ import { FlashList } from '@shopify/flash-list';
 import { useLinkStore } from '@/store/linkStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { LinkInput } from '@/components/LinkInput';
+import { SearchBar } from '@/components/SearchBar';
 import { LinkCard } from '@/components/LinkCard';
 import { CategoryPicker } from '@/components/CategoryPicker';
 import { COLORS } from '@/utils/constants';
+import { hapticDelete } from '@/utils/haptics';
 import { SavedLink } from '@/store/types';
 
 export default function HomeScreen() {
@@ -18,6 +20,7 @@ export default function HomeScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [batchPickerVisible, setBatchPickerVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isChecking = checkProgress !== null;
   const selectionActive = selectionMode || selectedIds.size > 0;
 
@@ -28,7 +31,17 @@ export default function HomeScreen() {
 
   const filteredLinks = links
     .filter((l) => showFavoritesOnly ? l.isFavorite : true)
-    .filter((l) => selectedCategory ? l.category === selectedCategory : true);
+    .filter((l) => selectedCategory ? l.category === selectedCategory : true)
+    .filter((l) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        l.metadata.title.toLowerCase().includes(q) ||
+        l.url.toLowerCase().includes(q) ||
+        (l.metadata.description?.toLowerCase().includes(q)) ||
+        (l.metadata.author?.toLowerCase().includes(q))
+      );
+    });
 
   const handleCheckDeadLinks = async () => {
     if (isChecking) return;
@@ -83,6 +96,7 @@ export default function HomeScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            hapticDelete();
             batchDelete(ids);
             clearSelection();
           },
@@ -148,6 +162,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <LinkInput />
+
+      {links.length > 0 && loaded && (
+        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+      )}
 
       {links.length > 0 && loaded && (
         <View>

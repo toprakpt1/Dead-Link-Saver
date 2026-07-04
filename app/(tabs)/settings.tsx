@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { Columns2, Columns3, AlignJustify, Trash2, Plus, RotateCw } from 'lucide-react-native';
 import { CardSize } from '@/store/types';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -8,6 +9,7 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useLinkStore } from '@/store/linkStore';
 import { useTutorialStore } from '@/store/tutorialStore';
 import { COLORS, STORAGE_KEYS } from '@/utils/constants';
+import { hapticDelete } from '@/utils/haptics';
 
 const SIZES: { key: CardSize; label: string; icon: typeof Columns2 }[] = [
   { key: 'small', label: 'Small', icon: Columns3 },
@@ -16,6 +18,7 @@ const SIZES: { key: CardSize; label: string; icon: typeof Columns2 }[] = [
 ];
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { cardSize, setCardSize, loadSettings, loaded } = useSettingsStore();
   const { categories, loadCategories, addCategory, removeCategory } = useCategoryStore();
   const [newName, setNewName] = useState('');
@@ -61,6 +64,7 @@ export default function SettingsScreen() {
           text: 'Delete Links',
           style: 'destructive',
           onPress: () => {
+            hapticDelete();
             useLinkStore.getState().batchDelete(linkIds);
             removeCategory(id);
           },
@@ -73,6 +77,7 @@ export default function SettingsScreen() {
     await AsyncStorage.removeItem(STORAGE_KEYS.ONBOARDING);
     const { reset, setStage } = useTutorialStore.getState();
     reset();
+    router.replace('/(tabs)');
     setStage('ask');
   };
 

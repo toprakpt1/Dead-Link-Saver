@@ -7,6 +7,7 @@ import { COLORS } from '@/utils/constants';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { UndoToast } from '@/components/UndoToast';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { hapticSave } from '@/utils/haptics';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
@@ -19,6 +20,7 @@ export default function RootLayout() {
       if (queryParams?.url && typeof queryParams.url === 'string') {
         try {
           await addLink(queryParams.url);
+          hapticSave();
         } catch (error) {
           console.error('Failed to add shared link:', error);
         }
