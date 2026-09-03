@@ -8,10 +8,10 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export function OfflineBanner() {
   const { t } = useTranslation();
-  const isOffline = useNetworkStatus();
+  const { isConnected } = useNetworkStatus();
   const isDark = useThemeStore((s) => s.theme.isDark);
   const c = COLORS;
-  if (!isOffline) return null;
+  if (isConnected) return null;
   return (
     <View style={[styles.banner, { backgroundColor: c.warning + (isDark ? '33' : '20'), borderBottomColor: c.warning }]}>
       <WifiOff size={14} color={c.warning} />

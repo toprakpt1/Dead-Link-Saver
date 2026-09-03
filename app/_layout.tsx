@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
-import { useTranslation } from 'react-i18next';
+import i18n from '@/utils/i18n';
 import { useLinkStore } from '@/store/linkStore';
 import { useThemeStore } from '@/store/themeStore';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
@@ -18,7 +18,7 @@ import { initI18n } from '@/utils/i18n';
 export default function RootLayout() {
   const { addLink } = useLinkStore();
   const { theme, themeId, loadTheme } = useThemeStore();
-  const { i18n } = useTranslation();
+  // i18n instance imported directly — useTranslation() can't run before initI18n()
   const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
