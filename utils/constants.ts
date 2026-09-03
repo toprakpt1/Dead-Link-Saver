@@ -49,6 +49,11 @@ export const COLORS: ThemeColors = new Proxy(fallback as ThemeColors, {
 
 export const FORGOTTEN_DAYS_THRESHOLD = 30;
 
+export const REMINDER_DAYS_THRESHOLD = 14;
+
+// Max chars stored per offline text snapshot (keeps storage reasonable)
+export const SNAPSHOT_MAX_CHARS = 60000;
+
 export const STORAGE_KEYS = {
   LINKS: '@dead_link_saver:links',
   SETTINGS: '@dead_link_saver:settings',

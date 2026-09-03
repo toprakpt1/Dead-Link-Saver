@@ -9,9 +9,10 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { Star, Trash2, Unlink, Film, MessageCircle, MessageSquare, Code2, Camera, BookOpen, FileText, Globe, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare, Tv, Headphones, Music, Briefcase } from 'lucide-react-native';
+import { Star, Trash2, Unlink, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare, BookOpenText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { SavedLink, LinkPlatform, LinkStatus, CardSize } from '@/store/types';
+import { useRouter } from 'expo-router';
+import { SavedLink, LinkStatus, CardSize } from '@/store/types';
 import { COLORS } from '@/utils/constants';
 import { CategoryBadge } from './CategoryBadge';
 import { CategoryPicker } from './CategoryPicker';
@@ -20,36 +21,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useTutorialStore } from '@/store/tutorialStore';
 import { useThemeStore } from '@/store/themeStore';
 import { hapticDelete, hapticFavorite } from '@/utils/haptics';
-
-const PLATFORM_ICONS: Record<LinkPlatform, typeof Film> = {
-  youtube: Film,
-  reddit: MessageCircle,
-  twitter: MessageSquare,
-  github: Code2,
-  instagram: Camera,
-  medium: BookOpen,
-  article: FileText,
-  unknown: Globe,
-  twitch: Tv,
-  discord: Headphones,
-  spotify: Music,
-  linkedin: Briefcase,
-};
-
-const PLATFORM_LABELS: Record<LinkPlatform, string> = {
-  youtube: 'Video',
-  reddit: 'Post',
-  twitter: 'Tweet',
-  github: 'Repo',
-  instagram: 'Post',
-  medium: 'Article',
-  article: 'Blog',
-  unknown: 'Link',
-  twitch: 'Stream',
-  discord: 'Chat',
-  spotify: 'Music',
-  linkedin: 'Profile',
-};
+import { PLATFORM_ICONS, PLATFORM_LABELS } from '@/utils/platforms';
 
 const STATUS_ICONS: Record<LinkStatus, typeof Eye> = {
   unread: Eye,
@@ -96,6 +68,7 @@ interface LinkCardProps {
 
 export function LinkCard({ link, selectionMode = false, isSelected = false, onToggleSelect }: LinkCardProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { softDelete, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
   const cardSize = useSettingsStore((s) => s.cardSize);
   const tutorialStage = useTutorialStore((s) => s.stage);
@@ -111,6 +84,8 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
 
   const PlatformIcon = PLATFORM_ICONS[link.platform];
   const StatusIcon = STATUS_ICONS[link.status];
+  // Platforms whose pages can be captured as readable text → offer the offline reader
+  const isReadablePlatform = ['article', 'medium', 'unknown'].includes(link.platform);
 
   const closePicker = () => {
     setPickerVisible(false);
@@ -242,6 +217,17 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
             <Pressable onPress={(e) => { e.stopPropagation(); hapticFavorite(); toggleFavorite(link.id); }} style={{ padding: s.actionPad }}>
               <Star size={s.iconSize} color={link.isFavorite ? c.warning : c.textMuted} fill={link.isFavorite ? c.warning : 'none'} />
             </Pressable>
+            {(link.snapshot || isReadablePlatform) && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  router.push(`/link/${link.id}`);
+                }}
+                style={{ padding: s.actionPad }}
+              >
+                <BookOpenText size={s.iconSize} color={link.snapshot ? c.primary : c.textMuted} />
+              </Pressable>
+            )}
             <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={{ padding: s.actionPad }}>
               <Trash2 size={s.iconSize} color={c.textMuted} />
             </Pressable>

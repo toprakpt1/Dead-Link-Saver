@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Bookmark, Clock, Sliders } from 'lucide-react-native';
+import { Bookmark, Clock, Sliders, ChartColumn } from 'lucide-react-native';
 import { useThemeStore } from '@/store/themeStore';
 import { useTranslation } from 'react-i18next';
 
@@ -28,6 +28,14 @@ export default function TabLayout() {
           title: t('tabs.savedLinks'),
           tabBarLabel: t('tabs.links'),
           tabBarIcon: ({ color, size }) => <Bookmark size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: t('tabs.statsTitle'),
+          tabBarLabel: t('tabs.stats'),
+          tabBarIcon: ({ color, size }) => <ChartColumn size={size} color={color} />,
         }}
       />
       <Tabs.Screen

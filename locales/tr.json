@@ -25,7 +25,9 @@
     "settings": "Ayarlar",
     "savedLinks": "Kaydedilen Linkler",
     "forgottenLinks": "Unutulanlar",
-    "settingsTitle": "Ayarlar"
+    "settingsTitle": "Ayarlar",
+    "stats": "İstatistik",
+    "statsTitle": "İstatistikler"
   },
   "home": {
     "linksCount_one": "{{count}} link",
@@ -53,6 +55,21 @@
     "batchDeleteCancel": "Vazgeç",
     "quotaGateTitle": "Günlük tarama limiti doldu",
     "quotaGateDesc": "Ödüllü reklam izleyip +1 hak al, veya Pro ile sınırsız tara."
+  },
+  "reminder": {
+    "banner_one": "{{days}} gün önce kaydettiğin {{count}} link hâlâ okunmadı.",
+    "banner_other": "{{days}} gün önce kaydettiğin {{count}} link hâlâ okunmadı.",
+    "view": "Oku",
+    "filterTitle_one": "{{count}} okunmamış hatırlatma",
+    "filterTitle_other": "{{count}} okunmamış hatırlatma",
+    "emptyTitle": "Hepsi okundu",
+    "emptySub": "{{days}} gün önce kaydettiğin her linki okumuşsun."
+  },
+  "clipboard": {
+    "title": "Bu linki kaydedeyim mi?",
+    "subtitle": "Panoda bulundu",
+    "notNow": "Şimdi değil",
+    "save": "Kaydet"
   },
   "forgotten": {
     "title": "Unutulan Linkler",
@@ -167,8 +184,19 @@
     "errorEmpty": "Lütfen bir URL gir",
     "errorInvalid": "Geçersiz URL",
     "errorDuplicate": "Link zaten var",
+    "errorSimilarDuplicate": "Benzer bir link zaten kayıtlı",
     "success": "Link başarıyla kaydedildi",
-    "failed": "Link kaydedilemedi"
+    "failed": "Link kaydedilemedi",
+    "multipleFoundTitle": "Birden fazla link bulundu",
+    "multipleFound_one": "Metinde {{count}} link bulundu. Hepsini kaydedelim mi?",
+    "multipleFound_other": "Metinde {{count}} link bulundu. Hepsini kaydedelim mi?",
+    "saveAll": "Hepsini kaydet",
+    "batchAdded_one": "{{count}} link eklendi",
+    "batchAdded_other": "{{count}} link eklendi",
+    "batchSkipped_one": "{{count}} atlandı (zaten kayıtlı)",
+    "batchSkipped_other": "{{count}} atlandı (zaten kayıtlı)",
+    "batchFailed_one": "{{count}} başarısız",
+    "batchFailed_other": "{{count}} başarısız"
   },
   "linkCard": {
     "dead": "Ölü",
@@ -185,6 +213,32 @@
   },
   "offline": {
     "noInternet": "İnternet bağlantısı yok"
+  },
+  "stats": {
+    "subtitle": "Kütüphanen bir bakışta",
+    "total": "Toplam",
+    "unread": "Okunmamış",
+    "favorites": "Favoriler",
+    "dead": "Ölü",
+    "ratesTitle": "Oranlar",
+    "readRate": "Okundu / açıldı",
+    "deadRate": "Ölü linkler",
+    "byPlatformTitle": "Platformlara göre",
+    "byCategoryTitle": "Kategorilere göre",
+    "emptyTitle": "Henüz gösterilecek bir şey yok",
+    "emptySub": "Link ekle ve bir tarama yap; istatistikler burada dolsun."
+  },
+  "reader": {
+    "back": "Geri",
+    "deadNote": "Bu link ölmüş — aşağıdaki çevrimdışı kopya, okumanın tek yolu olabilir.",
+    "offlineCopy": "Çevrimdışı kopya",
+    "capturedOn": "{{date}} tarihinde kaydedildi",
+    "noCopyTitle": "Henüz çevrimdışı kopya yok",
+    "noCopyDesc": "Sayfa metnini şimdi kaydet; link ölse bile sonra okuyabilirsin.",
+    "saveCopy": "Çevrimdışı kopyayı kaydet",
+    "saveFailed": "Kopya kaydedilemedi. İnternete bağlıyken tekrar dene.",
+    "openOriginal": "Orijinali aç",
+    "offlineHint": "Kopya kaydetmek için internet gerekir."
   },
   "onboarding": {
     "tapPasteTitle": "Vurgulu yapıştır butonuna dokun",

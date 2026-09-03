@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { ShieldAlert, Bookmark, Star, Trash2, Tags, CheckSquare } from 'lucide-react-native';
+import { ShieldAlert, Bookmark, Star, Trash2, Tags, CheckSquare, Bell, X, ArrowRight } from 'lucide-react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useTranslation } from 'react-i18next';
 import { useLinkStore } from '@/store/linkStore';
@@ -13,7 +13,7 @@ import { LinkCard } from '@/components/LinkCard';
 import { CategoryPicker } from '@/components/CategoryPicker';
 import { RewardedGate } from '@/components/RewardedGate';
 import { PaywallSheet } from '@/components/PaywallSheet';
-import { COLORS } from '@/utils/constants';
+import { COLORS, REMINDER_DAYS_THRESHOLD } from '@/utils/constants';
 import { hapticDelete } from '@/utils/haptics';
 import type { SavedLink } from '@/store/types';
 
@@ -32,9 +32,14 @@ export default function HomeScreen() {
   const [gateVisible, setGateVisible] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
+  const [showRemindersOnly, setShowRemindersOnly] = useState(false);
 
   const isChecking = checkProgress !== null;
   const selectionActive = selectionMode || selectedIds.size > 0;
+  const reminderMs = REMINDER_DAYS_THRESHOLD * 24 * 60 * 60 * 1000;
+  const isReminder = (l: SavedLink) =>
+    l.status === 'unread' && l.openCount === 0 && Date.now() - l.createdAt >= reminderMs;
+  const reminderLinks = links.filter(isReminder);
 
   useEffect(() => {
     loadLinks();
@@ -43,6 +48,7 @@ export default function HomeScreen() {
 
   const filteredLinks = links
     .filter((l) => (showFavoritesOnly ? l.isFavorite : true))
+    .filter((l) => (showRemindersOnly ? isReminder(l) : true))
     .filter((l) => (selectedCategory ? l.category === selectedCategory : true))
     .filter((l) => {
       if (!searchQuery.trim()) return true;
@@ -179,13 +185,24 @@ export default function HomeScreen() {
     <LinkCard link={item} selectionMode={selectionActive} isSelected={selectedIds.has(item.id)} onToggleSelect={toggleSelect} />
   );
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Bookmark size={48} color={c.textMuted} />
-      <Text style={[styles.emptyText, { color: c.text }]}>{showFavoritesOnly ? t('home.emptyTitleFav') : t('home.emptyTitle')}</Text>
-      <Text style={[styles.emptySubtext, { color: c.textMuted }]}>{showFavoritesOnly ? t('home.emptySubFav') : t('home.emptySub')}</Text>
-    </View>
-  );
+  const renderEmpty = () => {
+    if (showRemindersOnly) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Bell size={48} color={c.textMuted} />
+          <Text style={[styles.emptyText, { color: c.text }]}>{t('reminder.emptyTitle')}</Text>
+          <Text style={[styles.emptySubtext, { color: c.textMuted }]}>{t('reminder.emptySub', { days: REMINDER_DAYS_THRESHOLD })}</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyContainer}>
+        <Bookmark size={48} color={c.textMuted} />
+        <Text style={[styles.emptyText, { color: c.text }]}>{showFavoritesOnly ? t('home.emptyTitleFav') : t('home.emptyTitle')}</Text>
+        <Text style={[styles.emptySubtext, { color: c.textMuted }]}>{showFavoritesOnly ? t('home.emptySubFav') : t('home.emptySub')}</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
@@ -244,17 +261,21 @@ export default function HomeScreen() {
             contentContainerStyle={styles.filterContent}
           >
             <TouchableOpacity
-              style={[styles.filterChip, { borderColor: c.border }, selectedCategory === null && !showFavoritesOnly && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+              style={[styles.filterChip, { borderColor: c.border }, selectedCategory === null && !showFavoritesOnly && !showRemindersOnly && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
               onPress={() => {
                 setSelectedCategory(null);
                 setShowFavoritesOnly(false);
+                setShowRemindersOnly(false);
               }}
             >
               <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === null && !showFavoritesOnly && { color: c.primary }]}>{t('common.all')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.filterChip, { borderColor: c.border }, showFavoritesOnly && { borderColor: c.warning, backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)' }]}
-              onPress={() => setShowFavoritesOnly((prev) => !prev)}
+              onPress={() => {
+                setShowFavoritesOnly((prev) => !prev);
+                setShowRemindersOnly(false);
+              }}
             >
               <View style={styles.filterChipRow}>
                 <Star size={14} color={showFavoritesOnly ? c.warning : c.textMuted} fill={showFavoritesOnly ? c.warning : 'none'} />
@@ -270,7 +291,10 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={cat.id}
                   style={[styles.filterChip, { borderColor: c.border }, selectedCategory === cat.id && { borderColor: cat.color, backgroundColor: cat.color + (isDark ? '33' : '20') }]}
-                  onPress={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
+                  onPress={() => {
+                    setShowRemindersOnly(false);
+                    setSelectedCategory(cat.id === selectedCategory ? null : cat.id);
+                  }}
                 >
                   <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === cat.id && { color: cat.color }]}>
                     {cat.name} ({count})
@@ -281,6 +305,42 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
       )}
+
+      {reminderLinks.length > 0 &&
+        (showRemindersOnly ? (
+          <View style={[styles.reminderActiveBar, { backgroundColor: c.primaryMuted, borderBottomColor: c.border }]}>
+            <Bell size={14} color={c.primary} />
+            <Text style={[styles.reminderActiveText, { color: c.primary }]}>
+              {t('reminder.filterTitle', { count: reminderLinks.length })}
+            </Text>
+            <TouchableOpacity onPress={() => setShowRemindersOnly(false)} hitSlop={8} style={styles.reminderClear}>
+              <X size={16} color={c.textMuted} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.reminderBanner, { backgroundColor: isDark ? 'rgba(108,142,255,0.08)' : 'rgba(15,118,110,0.06)', borderColor: c.primary }]}
+            onPress={() => {
+              setSelectedCategory(null);
+              setShowFavoritesOnly(false);
+              setShowRemindersOnly(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.reminderIcon, { backgroundColor: c.primaryMuted }]}>
+              <Bell size={15} color={c.primary} />
+            </View>
+            <View style={styles.reminderTextWrap}>
+              <Text style={[styles.reminderBannerText, { color: c.text }]} numberOfLines={2}>
+                {t('reminder.banner', { count: reminderLinks.length, days: REMINDER_DAYS_THRESHOLD })}
+              </Text>
+            </View>
+            <View style={styles.reminderCta}>
+              <Text style={[styles.reminderCtaText, { color: c.primary }]}>{t('reminder.view')}</Text>
+              <ArrowRight size={14} color={c.primary} />
+            </View>
+          </TouchableOpacity>
+        ))}
 
       <FlashList data={filteredLinks} renderItem={renderItem} ListEmptyComponent={renderEmpty} contentContainerStyle={styles.listContent} />
       <CategoryPicker visible={batchPickerVisible} current="" onSelect={handleBatchCategory} onClose={() => setBatchPickerVisible(false)} />
@@ -348,6 +408,38 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 13, fontWeight: '500' },
   filterChipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   listContent: { paddingVertical: 8 },
+  reminderBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 12,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  reminderIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reminderTextWrap: { flex: 1 },
+  reminderBannerText: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  reminderCta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  reminderCtaText: { fontSize: 13, fontWeight: '700' },
+  reminderActiveBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  reminderActiveText: { flex: 1, fontSize: 13, fontWeight: '600' },
+  reminderClear: { padding: 2 },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',

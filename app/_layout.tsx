@@ -9,6 +9,7 @@ import { useThemeStore } from '@/store/themeStore';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { UndoToast } from '@/components/UndoToast';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { ClipboardPrompt } from '@/components/ClipboardPrompt';
 import { hapticSave } from '@/utils/haptics';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { initAds, preloadRewarded } from '@/services/ads';
@@ -71,6 +72,7 @@ export default function RootLayout() {
       </Stack>
       <OnboardingTutorial />
       <UndoToast />
+      <ClipboardPrompt />
     </View>
   );
 }

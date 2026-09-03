@@ -25,7 +25,9 @@
     "settings": "Settings",
     "savedLinks": "Saved Links",
     "forgottenLinks": "Forgotten",
-    "settingsTitle": "Settings"
+    "settingsTitle": "Settings",
+    "stats": "Stats",
+    "statsTitle": "Statistics"
   },
   "home": {
     "linksCount_one": "{{count}} link",
@@ -53,6 +55,21 @@
     "batchDeleteCancel": "Cancel",
     "quotaGateTitle": "Daily scan limit reached",
     "quotaGateDesc": "Watch a rewarded ad for +1 scan, or go Pro for unlimited."
+  },
+  "reminder": {
+    "banner_one": "{{count}} link you saved {{days}} days ago is still unread.",
+    "banner_other": "{{count}} links you saved {{days}} days ago are still unread.",
+    "view": "Read them",
+    "filterTitle_one": "{{count}} unread reminder",
+    "filterTitle_other": "{{count}} unread reminders",
+    "emptyTitle": "All caught up",
+    "emptySub": "You've read every link saved {{days}} days ago."
+  },
+  "clipboard": {
+    "title": "Save this link?",
+    "subtitle": "Found in your clipboard",
+    "notNow": "Not now",
+    "save": "Save Link"
   },
   "forgotten": {
     "title": "Forgotten Links",
@@ -167,8 +184,19 @@
     "errorEmpty": "Please enter a URL",
     "errorInvalid": "Invalid URL",
     "errorDuplicate": "Link already exists",
+    "errorSimilarDuplicate": "A similar link is already saved",
     "success": "Link saved successfully",
-    "failed": "Failed to save link"
+    "failed": "Failed to save link",
+    "multipleFoundTitle": "Multiple links found",
+    "multipleFound_one": "{{count}} link found in the text. Save them all?",
+    "multipleFound_other": "{{count}} links found in the text. Save them all?",
+    "saveAll": "Save all",
+    "batchAdded_one": "{{count}} link added",
+    "batchAdded_other": "{{count}} links added",
+    "batchSkipped_one": "{{count}} skipped (already saved)",
+    "batchSkipped_other": "{{count}} skipped (already saved)",
+    "batchFailed_one": "{{count}} failed",
+    "batchFailed_other": "{{count}} failed"
   },
   "linkCard": {
     "dead": "Dead",
@@ -185,6 +213,32 @@
   },
   "offline": {
     "noInternet": "No internet connection"
+  },
+  "stats": {
+    "subtitle": "Your library at a glance",
+    "total": "Total",
+    "unread": "Unread",
+    "favorites": "Favorites",
+    "dead": "Dead",
+    "ratesTitle": "Rates",
+    "readRate": "Read / opened",
+    "deadRate": "Dead links",
+    "byPlatformTitle": "By platform",
+    "byCategoryTitle": "By category",
+    "emptyTitle": "Nothing to show yet",
+    "emptySub": "Save links and run a scan to fill this in."
+  },
+  "reader": {
+    "back": "Back",
+    "deadNote": "This link is dead — the offline copy below may be your only way to read it.",
+    "offlineCopy": "Offline copy",
+    "capturedOn": "Captured {{date}}",
+    "noCopyTitle": "No offline copy yet",
+    "noCopyDesc": "Save the page text now, so you can read it later even if the link dies.",
+    "saveCopy": "Save offline copy",
+    "saveFailed": "Couldn't save a copy. Try again when online.",
+    "openOriginal": "Open original",
+    "offlineHint": "Saving a copy needs an internet connection."
   },
   "onboarding": {
     "tapPasteTitle": "Tap the highlighted paste button",

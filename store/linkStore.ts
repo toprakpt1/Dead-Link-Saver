@@ -1,15 +1,50 @@
 import { create } from 'zustand';
-import { LinkStore, SavedLink } from './types';
+import { LinkStore, SavedLink, LinkPlatform } from './types';
 import { storage } from '@/utils/storage';
-import { detectPlatform, isValidUrl, normalizeUrl } from '@/services/linkParser';
+import { detectPlatform, isValidUrl, normalizeUrl, canonicalKey } from '@/services/linkParser';
 import { fetchMetadata, fetchYouTubeMetadata } from '@/services/metadataFetcher';
 import { classifyLink } from '@/services/categoryClassifier';
 import { checkMultipleLinks } from '@/services/linkChecker';
+import { fetchPageSnapshot } from '@/services/snapshot';
+import { saveToWayback, looksLikeWaybackSnapshot } from '@/services/wayback';
 import { FORGOTTEN_DAYS_THRESHOLD } from '@/utils/constants';
 
 export const TUTORIAL_SAMPLE_URL = 'https://reactnative.dev/docs/getting-started';
 
 let deleteTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Platforms whose pages are worth capturing as offline-readable text
+const SNAPSHOT_PLATFORMS: LinkPlatform[] = ['article', 'medium', 'unknown'];
+const snapshotInFlight = new Set<string>();
+const archivingInFlight = new Set<string>();
+
+// Runs after a scan marks links dead: asks the Wayback Machine to preserve a
+// copy so the content isn't lost. Best-effort, never blocks or fails a scan.
+async function autoArchiveDeadLinks(deadIds: string[]): Promise<void> {
+  for (const id of deadIds) {
+    const current = useLinkStore.getState();
+    const link = current.links.find((l) => l.id === id);
+    if (!link || archivingInFlight.has(id)) continue;
+    // Skip if a real Wayback snapshot already exists for this link
+    if (looksLikeWaybackSnapshot(link.archiveUrl)) continue;
+
+    archivingInFlight.add(id);
+    try {
+      const snapshotUrl = await saveToWayback(link.url);
+      if (snapshotUrl) {
+        const updatedLinks = useLinkStore.getState().links.map((l) =>
+          l.id === id ? { ...l, archiveUrl: snapshotUrl } : l
+        );
+        useLinkStore.setState({ links: updatedLinks });
+        await storage.saveLinks(updatedLinks);
+      }
+    } catch {
+      // Archiving is best-effort
+    } finally {
+      archivingInFlight.delete(id);
+    }
+  }
+}
 
 export const useLinkStore = create<LinkStore>((set, get) => ({
   links: [],
@@ -28,6 +63,25 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     }
   },
 
+  captureSnapshot: async (id: string) => {
+    const link = get().links.find((l) => l.id === id);
+    if (!link || link.snapshot || snapshotInFlight.has(id)) return false;
+    snapshotInFlight.add(id);
+    try {
+      const text = await fetchPageSnapshot(link.url);
+      const updatedLinks = get().links.map((l) =>
+        l.id === id ? { ...l, snapshot: { text, capturedAt: Date.now() } } : l
+      );
+      set({ links: updatedLinks });
+      await storage.saveLinks(updatedLinks);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      snapshotInFlight.delete(id);
+    }
+  },
+
   addLink: async (url: string) => {
     const normalizedUrl = normalizeUrl(url);
 
@@ -35,10 +89,15 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
       throw new Error('Invalid URL');
     }
 
-    // Check for duplicates
-    const existingLink = get().links.find((link) => link.url === normalizedUrl);
-    if (existingLink) {
-      throw new Error('Link already exists');
+    // Check for duplicates (exact match or same canonical link, e.g. YouTube share variants)
+    const duplicate = get().links.find(
+      (link) => canonicalKey(link.url) === canonicalKey(normalizedUrl)
+    );
+    if (duplicate) {
+      if (duplicate.url === normalizedUrl) {
+        throw new Error('Link already exists');
+      }
+      throw new Error('A similar link is already saved');
     }
 
     set({ isLoading: true });
@@ -70,6 +129,11 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
       const updatedLinks = [newLink, ...get().links];
       set({ links: updatedLinks, isLoading: false });
       await storage.saveLinks(updatedLinks);
+
+      // Best-effort offline copy for text pages — runs in background, never blocks saving
+      if (SNAPSHOT_PLATFORMS.includes(platform)) {
+        void get().captureSnapshot(newLink.id);
+      }
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -206,6 +270,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
 
     set({ links: updatedLinks, checkProgress: null });
     await storage.saveLinks(updatedLinks);
+    void autoArchiveDeadLinks(deadIds);
     return deadIds;
   },
 
@@ -247,6 +312,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
 
     set({ links: updatedLinks, checkProgress: null });
     await storage.saveLinks(updatedLinks);
+    void autoArchiveDeadLinks(deadIds);
     return deadIds;
   },
 

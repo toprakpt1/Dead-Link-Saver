@@ -22,6 +22,11 @@ export interface LinkMetadata {
   publishedDate?: string;
 }
 
+export interface LinkSnapshot {
+  text: string;
+  capturedAt: number;
+}
+
 export interface SavedLink {
   id: string;
   url: string;
@@ -35,6 +40,7 @@ export interface SavedLink {
   createdAt: number;
   lastOpenedAt?: number;
   openCount: number;
+  snapshot?: LinkSnapshot;
 }
 
 export interface LinkStore {
@@ -56,6 +62,7 @@ export interface LinkStore {
   markAsOpened: (id: string) => void;
   checkDeadLinks: () => Promise<string[]>;
   getForgottenLinks: () => SavedLink[];
+  captureSnapshot: (id: string) => Promise<boolean>;
   loadLinks: () => Promise<void>;
 }
 
