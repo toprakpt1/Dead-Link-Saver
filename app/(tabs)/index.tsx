@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { ShieldAlert, Bookmark, Star, Trash2, Tags, CheckSquare } from 'lucide-react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useTranslation } from 'react-i18next';
 import { useLinkStore } from '@/store/linkStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
+import { useThemeStore } from '@/store/themeStore';
 import { LinkInput } from '@/components/LinkInput';
 import { SearchBar } from '@/components/SearchBar';
 import { LinkCard } from '@/components/LinkCard';
@@ -16,8 +18,11 @@ import { hapticDelete } from '@/utils/haptics';
 import type { SavedLink } from '@/store/types';
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { links, loadLinks, checkDeadLinks, removeLink, checkProgress, batchDelete, batchUpdateCategory, batchCheckDeadLinks } = useLinkStore();
   const { categories, loadCategories, loaded } = useCategoryStore();
+  const isDark = useThemeStore((s) => s.theme.isDark); // re-render on theme change
+  const c = COLORS;
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -58,15 +63,15 @@ export default function HomeScreen() {
         await useEntitlementStore.getState().consumeCheck();
       }
       if (deadIds.length === 0) {
-        Alert.alert('Sonuç', 'Ölü link bulunamadı.');
+        Alert.alert(t('common.success'), t('home.noDeadFound'));
       } else {
         Alert.alert(
-          'Ölü Link Bulundu',
-          `${deadIds.length} ölü link bulundu. Silinsin mi?`,
+          t('home.deadFoundTitle'),
+          t('home.deadFoundBody', { count: deadIds.length }),
           [
-            { text: 'Kalsın', style: 'cancel' },
+            { text: t('common.keep'), style: 'cancel' },
             {
-              text: 'Sil',
+              text: t('common.delete'),
               style: 'destructive',
               onPress: () => deadIds.forEach((id) => removeLink(id)),
             },
@@ -92,11 +97,8 @@ export default function HomeScreen() {
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -109,12 +111,12 @@ export default function HomeScreen() {
   const handleBatchDelete = () => {
     const ids = Array.from(selectedIds);
     Alert.alert(
-      'Delete Links',
-      `Delete ${ids.length} link${ids.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      t('home.deleteLinksTitle'),
+      t('home.deleteLinksBody', { count: ids.length }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             hapticDelete();
@@ -140,15 +142,15 @@ export default function HomeScreen() {
       }
       clearSelection();
       if (deadIds.length === 0) {
-        Alert.alert('Sonuç', 'Seçimde ölü link bulunamadı.');
+        Alert.alert(t('common.success'), t('home.noDeadFoundSelection'));
       } else {
         Alert.alert(
-          'Ölü Link Bulundu',
-          `${deadIds.length} ölü link bulundu. Silinsin mi?`,
+          t('home.deadFoundTitle'),
+          t('home.deadFoundBodySelection', { count: deadIds.length }),
           [
-            { text: 'Kalsın', style: 'cancel' },
+            { text: t('common.keep'), style: 'cancel' },
             {
-              text: 'Sil',
+              text: t('common.delete'),
               style: 'destructive',
               onPress: () => {
                 deadIds.forEach((id) => removeLink(id));
@@ -179,57 +181,57 @@ export default function HomeScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Bookmark size={48} color={COLORS.textMuted} />
-      <Text style={styles.emptyText}>{showFavoritesOnly ? 'No favorite links yet' : 'No saved links yet'}</Text>
-      <Text style={styles.emptySubtext}>{showFavoritesOnly ? 'Star a link to add it here' : 'Paste a link above to get started'}</Text>
+      <Bookmark size={48} color={c.textMuted} />
+      <Text style={[styles.emptyText, { color: c.text }]}>{showFavoritesOnly ? t('home.emptyTitleFav') : t('home.emptyTitle')}</Text>
+      <Text style={[styles.emptySubtext, { color: c.textMuted }]}>{showFavoritesOnly ? t('home.emptySubFav') : t('home.emptySub')}</Text>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
       <LinkInput />
 
       {links.length > 0 && loaded && <SearchBar value={searchQuery} onChangeText={setSearchQuery} />}
 
       {links.length > 0 && loaded && (
         <View>
-          <View style={styles.toolbar}>
+          <View style={[styles.toolbar, { borderBottomColor: c.border }]}>
             {selectionActive ? (
               <>
                 <TouchableOpacity onPress={clearSelection} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={[styles.cancelButtonText, { color: c.textMuted }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.count}>{selectedIds.size} selected</Text>
+                <Text style={[styles.count, { color: c.textMuted }]}>{t('home.selectedCount', { count: selectedIds.size })}</Text>
                 <View style={styles.bulkActions}>
                   <TouchableOpacity onPress={handleBatchDelete} style={styles.bulkButton}>
-                    <Trash2 size={16} color={COLORS.error} />
+                    <Trash2 size={16} color={c.error} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setBatchPickerVisible(true)} style={styles.bulkButton}>
-                    <Tags size={16} color={COLORS.primary} />
+                    <Tags size={16} color={c.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handleBatchCheck} disabled={isChecking} style={styles.bulkButton}>
-                    {isChecking ? <ActivityIndicator size={16} color={COLORS.primary} /> : <ShieldAlert size={16} color={COLORS.primary} />}
+                    {isChecking ? <ActivityIndicator size={16} color={c.primary} /> : <ShieldAlert size={16} color={c.primary} />}
                   </TouchableOpacity>
                 </View>
               </>
             ) : (
               <>
-                <Text style={styles.count}>{filteredLinks.length} links</Text>
+                <Text style={[styles.count, { color: c.textMuted }]}>{t('home.linksCount', { count: filteredLinks.length })}</Text>
                 <View style={styles.bulkActions}>
                   <TouchableOpacity style={styles.checkButton} onPress={handleCheckDeadLinks} disabled={isChecking}>
-                    {isChecking ? <ActivityIndicator size={16} color={COLORS.primary} /> : <ShieldAlert size={16} color={COLORS.primary} />}
-                    <Text style={styles.checkButtonText}>
-                      {isChecking ? `${checkProgress!.checked}/${checkProgress!.total} checked` : 'Check Dead Links'}
+                    {isChecking ? <ActivityIndicator size={16} color={c.primary} /> : <ShieldAlert size={16} color={c.primary} />}
+                    <Text style={[styles.checkButtonText, { color: c.primary }]}>
+                      {isChecking ? t('home.checking', { checked: checkProgress!.checked, total: checkProgress!.total }) : t('home.checkDeadLinks')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
                       setSelectionMode(true);
                     }}
-                    style={styles.selectButton}
+                    style={[styles.selectButton, { borderColor: c.border }]}
                   >
-                    <CheckSquare size={16} color={COLORS.textMuted} />
-                    <Text style={styles.selectButtonText}>Select</Text>
+                    <CheckSquare size={16} color={c.textMuted} />
+                    <Text style={[styles.selectButtonText, { color: c.textMuted }]}>{t('home.select')}</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -238,26 +240,26 @@ export default function HomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.filterBar}
+            style={[styles.filterBar, { borderBottomColor: c.border }]}
             contentContainerStyle={styles.filterContent}
           >
             <TouchableOpacity
-              style={[styles.filterChip, selectedCategory === null && !showFavoritesOnly && styles.filterChipActive]}
+              style={[styles.filterChip, { borderColor: c.border }, selectedCategory === null && !showFavoritesOnly && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
               onPress={() => {
                 setSelectedCategory(null);
                 setShowFavoritesOnly(false);
               }}
             >
-              <Text style={[styles.filterChipText, selectedCategory === null && !showFavoritesOnly && styles.filterChipTextActive]}>All</Text>
+              <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === null && !showFavoritesOnly && { color: c.primary }]}>{t('common.all')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterChip, showFavoritesOnly && styles.filterChipFav]}
+              style={[styles.filterChip, { borderColor: c.border }, showFavoritesOnly && { borderColor: c.warning, backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)' }]}
               onPress={() => setShowFavoritesOnly((prev) => !prev)}
             >
               <View style={styles.filterChipRow}>
-                <Star size={14} color={showFavoritesOnly ? COLORS.warning : COLORS.textMuted} fill={showFavoritesOnly ? COLORS.warning : 'none'} />
-                <Text style={[styles.filterChipText, showFavoritesOnly && styles.filterChipTextFav]}>
-                  Favorites ({links.filter((l) => l.isFavorite).length})
+                <Star size={14} color={showFavoritesOnly ? c.warning : c.textMuted} fill={showFavoritesOnly ? c.warning : 'none'} />
+                <Text style={[styles.filterChipText, { color: c.textMuted }, showFavoritesOnly && { color: c.warning }]}>
+                  {t('home.favorites')} ({links.filter((l) => l.isFavorite).length})
                 </Text>
               </View>
             </TouchableOpacity>
@@ -267,10 +269,10 @@ export default function HomeScreen() {
               return (
                 <TouchableOpacity
                   key={cat.id}
-                  style={[styles.filterChip, selectedCategory === cat.id && { borderColor: cat.color, backgroundColor: cat.color + '20' }]}
+                  style={[styles.filterChip, { borderColor: c.border }, selectedCategory === cat.id && { borderColor: cat.color, backgroundColor: cat.color + (isDark ? '33' : '20') }]}
                   onPress={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
                 >
-                  <Text style={[styles.filterChipText, selectedCategory === cat.id && { color: cat.color }]}>
+                  <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === cat.id && { color: cat.color }]}>
                     {cat.name} ({count})
                   </Text>
                 </TouchableOpacity>
@@ -307,10 +309,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1 },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -318,38 +317,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
-  count: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-  },
-  checkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  checkButtonText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-  },
-  cancelButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-  },
-  bulkActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  bulkButton: {
-    padding: 4,
-  },
+  count: { fontSize: 14 },
+  checkButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  checkButtonText: { fontSize: 14, fontWeight: '500' },
+  cancelButton: { paddingVertical: 4, paddingHorizontal: 4 },
+  cancelButtonText: { fontSize: 14 },
+  bulkActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bulkButton: { padding: 4 },
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -358,24 +333,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  selectButtonText: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  filterBar: {
-    minHeight: 52,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  filterContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 6,
-    alignItems: 'center',
-  },
+  selectButtonText: { fontSize: 13, fontWeight: '500' },
+  filterBar: { minHeight: 52, borderBottomWidth: 1 },
+  filterContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 6, alignItems: 'center' },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -383,35 +344,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     justifyContent: 'center',
-    borderColor: COLORS.border,
   },
-  filterChipActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '20',
-  },
-  filterChipFav: {
-    borderColor: COLORS.warning,
-    backgroundColor: COLORS.warning + '20',
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: COLORS.primary,
-  },
-  filterChipTextFav: {
-    color: COLORS.warning,
-  },
-  filterChipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
+  filterChipText: { fontSize: 13, fontWeight: '500' },
+  filterChipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  listContent: { paddingVertical: 8 },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -419,13 +355,6 @@ const styles = StyleSheet.create({
     paddingTop: 100,
     gap: 12,
   },
-  emptyText: {
-    fontSize: 18,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-  },
+  emptyText: { fontSize: 18, fontWeight: '600' },
+  emptySubtext: { fontSize: 14 },
 });

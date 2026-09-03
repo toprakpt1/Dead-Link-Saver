@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import { useLinkStore } from '@/store/linkStore';
-import { COLORS } from '@/utils/constants';
+import { useThemeStore } from '@/store/themeStore';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { UndoToast } from '@/components/UndoToast';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -11,23 +13,25 @@ import { hapticSave } from '@/utils/haptics';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { initAds, preloadRewarded } from '@/services/ads';
 import { initPurchases } from '@/services/purchases';
+import { initI18n } from '@/utils/i18n';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
+  const { theme, themeId, loadTheme } = useThemeStore();
+  const { i18n } = useTranslation();
+  const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
-    // Monetization bootstrap: entitlements + ads + purchases
-    // Pro entitlements loaded from AsyncStorage / RevenueCat, ads preloaded in background
+    void loadTheme();
+    void initI18n().then(() => setI18nReady(true));
     void useEntitlementStore.getState().init();
     void initAds().then(() => void preloadRewarded());
     void initPurchases();
   }, []);
 
   useEffect(() => {
-    // Handle incoming shared links
     const handleUrl = async (event: { url: string }) => {
       const { path, queryParams } = Linking.parse(event.url);
-      
       if (queryParams?.url && typeof queryParams.url === 'string') {
         try {
           await addLink(queryParams.url);
@@ -37,34 +41,30 @@ export default function RootLayout() {
         }
       }
     };
-
     const subscription = Linking.addEventListener('url', handleUrl);
-
-    // Check for initial URL
     Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleUrl({ url });
-      }
+      if (url) handleUrl({ url });
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, [addLink]);
 
+  if (!i18nReady) {
+    return <View style={[styles.container, { backgroundColor: theme.colors.background }]} />;
+  }
+
+  // Re-render entire tree when theme or locale changes so legacy COLORS proxy users re-evaluate
+  const treeKey = `${themeId}-${i18n.language}`;
+
   return (
-    <View style={styles.container}>
+    <View key={treeKey} style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <OfflineBanner />
       <Stack
         screenOptions={{
-          headerStyle: {
-            backgroundColor: COLORS.surface,
-          },
-          headerTintColor: COLORS.text,
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.text,
           headerShadowVisible: false,
-          contentStyle: {
-            backgroundColor: COLORS.background,
-          },
+          contentStyle: { backgroundColor: theme.colors.background },
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -76,7 +76,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });

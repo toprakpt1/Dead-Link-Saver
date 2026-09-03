@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Star, Trash2, Unlink, Film, MessageCircle, MessageSquare, Code2, Camera, BookOpen, FileText, Globe, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare, Tv, Headphones, Music, Briefcase } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { SavedLink, LinkPlatform, LinkStatus, CardSize } from '@/store/types';
 import { COLORS } from '@/utils/constants';
 import { CategoryBadge } from './CategoryBadge';
@@ -17,6 +18,7 @@ import { CategoryPicker } from './CategoryPicker';
 import { useLinkStore } from '@/store/linkStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTutorialStore } from '@/store/tutorialStore';
+import { useThemeStore } from '@/store/themeStore';
 import { hapticDelete, hapticFavorite } from '@/utils/haptics';
 
 const PLATFORM_ICONS: Record<LinkPlatform, typeof Film> = {
@@ -53,12 +55,6 @@ const STATUS_ICONS: Record<LinkStatus, typeof Eye> = {
   unread: Eye,
   watched: CheckCircle2,
   saved: BookmarkPlus,
-};
-
-const STATUS_COLORS: Record<LinkStatus, string> = {
-  unread: COLORS.primary,
-  watched: COLORS.success,
-  saved: COLORS.secondary,
 };
 
 const SIZE_MAP: Record<CardSize, {
@@ -99,11 +95,14 @@ interface LinkCardProps {
 }
 
 export function LinkCard({ link, selectionMode = false, isSelected = false, onToggleSelect }: LinkCardProps) {
+  const { t } = useTranslation();
   const { softDelete, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
   const cardSize = useSettingsStore((s) => s.cardSize);
   const tutorialStage = useTutorialStore((s) => s.stage);
   const tutorialSampleLinkId = useTutorialStore((s) => s.sampleLinkId);
   const setTutorialStage = useTutorialStore((s) => s.setStage);
+  const isDark = useThemeStore((s) => s.theme.isDark);
+  const c = COLORS;
   const s = SIZE_MAP[cardSize];
   const [pickerVisible, setPickerVisible] = useState(false);
   const isTutorialTarget = tutorialSampleLinkId === link.id;
@@ -131,12 +130,12 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
     }
     if (link.isDead && link.archiveUrl) {
       Alert.alert(
-        'Dead Link',
-        'This link is no longer available. Open archived version?',
+        t('linkCard.deleteTitle'),
+        t('linkCard.deleteBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Open Archive',
+            text: t('linkCard.openArchive'),
             onPress: () => {
               Linking.openURL(link.archiveUrl!);
               markAsOpened(link.id);
@@ -146,7 +145,6 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
       );
       return;
     }
-
     await Linking.openURL(link.url);
     markAsOpened(link.id);
   };
@@ -166,28 +164,24 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
   return (
     <TouchableOpacity
       style={[
-        base.card,
-        isSelected && base.cardSelected,
-        {
-          padding: s.cardPadding,
-          marginVertical: s.cardMarginV,
-        },
+        { padding: s.cardPadding, marginVertical: s.cardMarginV, backgroundColor: c.surface, borderRadius: 8, marginHorizontal: 12, borderWidth: 1, borderColor: c.border },
+        isSelected && { borderColor: c.primary, backgroundColor: c.primaryMuted },
       ]}
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <View style={[base.header, { gap: s.headerGap, marginBottom: s.headerMb }]}>
+      <View style={[styles.header, { gap: s.headerGap, marginBottom: s.headerMb }]}>
         {selectionMode && (
           <Pressable onPress={(e) => { e.stopPropagation(); onToggleSelect?.(link.id); }} hitSlop={8}>
             {isSelected ? (
-              <CheckSquare size={s.statusSize} color={COLORS.primary} />
+              <CheckSquare size={s.statusSize} color={c.primary} />
             ) : (
-              <Square size={s.statusSize} color={COLORS.textMuted} />
+              <Square size={s.statusSize} color={c.textMuted} />
             )}
           </Pressable>
         )}
         <Pressable onPress={(e) => { e.stopPropagation(); cycleStatus(); }} hitSlop={8}>
-          <StatusIcon size={s.statusSize} color={STATUS_COLORS[link.status]} />
+          <StatusIcon size={s.statusSize} color={link.status === 'unread' ? c.primary : link.status === 'watched' ? c.success : c.secondary} />
         </Pressable>
         <Pressable
           onPress={(e) => {
@@ -198,8 +192,8 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
             setPickerVisible(true);
           }}
           style={[
-            base.categoryPressable,
-            isTutorialTarget && tutorialStage === 'tap-category' && base.tutorialCategoryFocus,
+            { borderRadius: 8 },
+            isTutorialTarget && tutorialStage === 'tap-category' && { borderWidth: 2, borderColor: c.primary, padding: 3, margin: -5, backgroundColor: c.primaryMuted },
           ]}
         >
           <CategoryBadge category={link.category} />
@@ -212,44 +206,44 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
               Linking.openURL(url);
               markAsOpened(link.id);
             }}
-            style={[base.deadBadge, { gap: s.deadGap, paddingHorizontal: s.deadHPad, paddingVertical: s.deadVPad }]}
+            style={[styles.deadBadge, { gap: s.deadGap, paddingHorizontal: s.deadHPad, paddingVertical: s.deadVPad, backgroundColor: c.error + (isDark ? '33' : '20') }]}
           >
-            <Unlink size={s.deadSize} color={COLORS.error} />
-            <Text style={[base.deadText, { fontSize: s.deadSize }]}>Dead</Text>
+            <Unlink size={s.deadSize} color={c.error} />
+            <Text style={[styles.deadText, { fontSize: s.deadSize, color: c.error }]}>{t('linkCard.dead')}</Text>
           </Pressable>
         )}
       </View>
 
       {link.metadata.thumbnail ? (
-        <Image source={{ uri: link.metadata.thumbnail }} style={[base.thumbnail, { height: s.thumbHeight, marginBottom: s.thumbMb }]} />
+        <Image source={{ uri: link.metadata.thumbnail }} style={[styles.thumbnail, { height: s.thumbHeight, marginBottom: s.thumbMb, backgroundColor: c.border }]} />
       ) : (
-        <View style={[base.placeholder, { height: s.thumbHeight, marginBottom: s.thumbMb }]}>
-          <PlatformIcon size={s.placeholderIcon} color={COLORS.textMuted} />
+        <View style={[styles.placeholder, { height: s.thumbHeight, marginBottom: s.thumbMb, backgroundColor: c.border }]}>
+          <PlatformIcon size={s.placeholderIcon} color={c.textMuted} />
         </View>
       )}
 
-      <Text style={[base.title, { fontSize: s.titleSize, marginBottom: s.titleMb }]} numberOfLines={2}>
+      <Text style={[styles.title, { fontSize: s.titleSize, marginBottom: s.titleMb, color: c.text }]} numberOfLines={2}>
         {link.metadata.title}
       </Text>
 
       {link.metadata.description && (
-        <Text style={[base.description, { fontSize: s.descSize, marginBottom: s.descMb }]} numberOfLines={2}>
+        <Text style={[styles.description, { fontSize: s.descSize, marginBottom: s.descMb, color: c.textMuted }]} numberOfLines={2}>
           {link.metadata.description}
         </Text>
       )}
 
-      <View style={base.footer}>
-        <View style={base.platformRow}>
-          <PlatformIcon size={s.platformSize} color={COLORS.textMuted} />
-          <Text style={[base.platform, { fontSize: s.platformSize }]}>{PLATFORM_LABELS[link.platform]}</Text>
+      <View style={styles.footer}>
+        <View style={styles.platformRow}>
+          <PlatformIcon size={s.platformSize} color={c.textMuted} />
+          <Text style={[styles.platform, { fontSize: s.platformSize, color: c.textMuted }]}>{PLATFORM_LABELS[link.platform]}</Text>
         </View>
         {!selectionMode && (
-          <View style={[base.actions, { gap: s.actionGap }]}>
-            <Pressable onPress={(e) => { e.stopPropagation(); hapticFavorite(); toggleFavorite(link.id); }} style={[base.actionButton, { padding: s.actionPad }]}>
-              <Star size={s.iconSize} color={link.isFavorite ? COLORS.warning : COLORS.textMuted} fill={link.isFavorite ? COLORS.warning : 'none'} />
+          <View style={[styles.actions, { gap: s.actionGap }]}>
+            <Pressable onPress={(e) => { e.stopPropagation(); hapticFavorite(); toggleFavorite(link.id); }} style={{ padding: s.actionPad }}>
+              <Star size={s.iconSize} color={link.isFavorite ? c.warning : c.textMuted} fill={link.isFavorite ? c.warning : 'none'} />
             </Pressable>
-            <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={[base.actionButton, { padding: s.actionPad }]}>
-              <Trash2 size={s.iconSize} color={COLORS.textMuted} />
+            <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={{ padding: s.actionPad }}>
+              <Trash2 size={s.iconSize} color={c.textMuted} />
             </Pressable>
           </View>
         )}
@@ -270,76 +264,16 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
   );
 }
 
-const base = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 8,
-    marginHorizontal: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  cardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '08',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoryPressable: {
-    borderRadius: 8,
-  },
-  tutorialCategoryFocus: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    padding: 3,
-    margin: -5,
-    backgroundColor: COLORS.primary + '14',
-  },
-  thumbnail: {
-    width: '100%',
-    borderRadius: 6,
-    backgroundColor: COLORS.border,
-  },
-  placeholder: {
-    width: '100%',
-    borderRadius: 6,
-    backgroundColor: COLORS.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  description: {
-    color: COLORS.textMuted,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  platformRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  platform: {
-    color: COLORS.textMuted,
-  },
-  actions: {
-    flexDirection: 'row',
-  },
-  actionButton: {},
-  deadBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.error + '20',
-    borderRadius: 6,
-  },
-  deadText: {
-    fontWeight: '500',
-    color: COLORS.error,
-  },
+const styles = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center' },
+  thumbnail: { width: '100%', borderRadius: 6 },
+  placeholder: { width: '100%', borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  title: { fontWeight: '600' },
+  description: {},
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  platformRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  platform: {},
+  actions: { flexDirection: 'row' },
+  deadBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 6 },
+  deadText: { fontWeight: '500' },
 });

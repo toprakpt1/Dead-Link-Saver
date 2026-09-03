@@ -10,18 +10,23 @@ import {
 } from 'react-native';
 import { ClipboardPaste, Save } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '@/utils/constants';
 import { TUTORIAL_SAMPLE_URL, useLinkStore } from '@/store/linkStore';
 import { useTutorialStore } from '@/store/tutorialStore';
+import { useThemeStore } from '@/store/themeStore';
 import { hapticSave } from '@/utils/haptics';
 
 export function LinkInput() {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const { addLink, addSampleLink, isLoading } = useLinkStore();
   const tutorialStage = useTutorialStore((s) => s.stage);
   const setTutorialStage = useTutorialStore((s) => s.setStage);
   const setSampleLinkId = useTutorialStore((s) => s.setSampleLinkId);
   const isTutorialPasteTarget = tutorialStage === 'paste-link';
+  const isDark = useThemeStore((s) => s.theme.isDark);
+  const c = COLORS;
 
   const handlePaste = async () => {
     if (isTutorialPasteTarget) {
@@ -31,24 +36,23 @@ export function LinkInput() {
       setTutorialStage('tap-category');
       return;
     }
-
     const text = await Clipboard.getStringAsync();
     setUrl(text);
   };
 
   const handleSave = async () => {
     if (!url.trim()) {
-      Alert.alert('Error', 'Please enter a URL');
+      Alert.alert(t('common.error'), t('linkInput.errorEmpty'));
       return;
     }
-
     try {
       await addLink(url);
       hapticSave();
       setUrl('');
-      Alert.alert('Success', 'Link saved successfully');
+      Alert.alert(t('common.success'), t('linkInput.success'));
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save link');
+      const msg = error instanceof Error ? error.message : t('linkInput.failed');
+      Alert.alert(t('common.error'), msg);
     }
   };
 
@@ -56,9 +60,9 @@ export function LinkInput() {
     <View style={styles.container}>
       <View style={styles.inputWrapper}>
         <TextInput
-          style={styles.input}
-          placeholder="Paste link here"
-          placeholderTextColor={COLORS.textMuted}
+          style={[styles.input, { backgroundColor: c.surface, borderColor: c.border, color: c.text }]}
+          placeholder={t('linkInput.placeholder')}
+          placeholderTextColor={c.textMuted}
           value={url}
           onChangeText={setUrl}
           autoCapitalize="none"
@@ -67,25 +71,25 @@ export function LinkInput() {
           editable={!isLoading}
         />
         <TouchableOpacity
-          style={[styles.pasteButton, isTutorialPasteTarget && styles.tutorialPasteFocus]}
+          style={[styles.pasteButton, { backgroundColor: c.surface, borderColor: c.border }, isTutorialPasteTarget && { borderWidth: 2, borderColor: c.primary, backgroundColor: c.primaryMuted }]}
           onPress={handlePaste}
           disabled={isLoading}
         >
-          <ClipboardPaste size={20} color={COLORS.primary} />
+          <ClipboardPaste size={20} color={c.primary} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+        style={[styles.saveButton, { backgroundColor: c.primary }, isLoading && styles.saveButtonDisabled]}
         onPress={handleSave}
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color={COLORS.background} />
+          <ActivityIndicator color={c.onPrimary} />
         ) : (
           <View style={styles.saveButtonContent}>
-            <Save size={20} color={COLORS.background} />
-            <Text style={styles.saveButtonText}>Save Link</Text>
+            <Save size={20} color={c.onPrimary} />
+            <Text style={[styles.saveButtonText, { color: c.onPrimary }]}>{t('linkInput.save')}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -94,56 +98,25 @@ export function LinkInput() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  container: { padding: 16, gap: 12 },
+  inputWrapper: { flexDirection: 'row', gap: 8 },
   input: {
     flex: 1,
-    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: COLORS.text,
     fontSize: 15,
   },
   pasteButton: {
-    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: 8,
     paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tutorialPasteFocus: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '14',
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  saveButtonText: {
-    color: COLORS.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  saveButton: { borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
+  saveButtonDisabled: { opacity: 0.6 },
+  saveButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saveButtonText: { fontSize: 16, fontWeight: '600' },
 });

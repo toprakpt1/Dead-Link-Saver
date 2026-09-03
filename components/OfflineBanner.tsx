@@ -1,46 +1,34 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { WifiOff } from 'lucide-react-native';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useTranslation } from 'react-i18next';
+import { useThemeStore } from '@/store/themeStore';
 import { COLORS } from '@/utils/constants';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export function OfflineBanner() {
-  const { isConnected } = useNetworkStatus();
-  const translateY = useRef(new Animated.Value(-60)).current;
-
-  useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: isConnected ? -60 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [isConnected]);
-
+  const { t } = useTranslation();
+  const isOffline = useNetworkStatus();
+  const isDark = useThemeStore((s) => s.theme.isDark);
+  const c = COLORS;
+  if (!isOffline) return null;
   return (
-    <Animated.View style={[styles.banner, { transform: [{ translateY }] }]}>
-      <WifiOff size={14} color="#fef2f2" />
-      <Text style={styles.text}>No internet connection</Text>
-    </Animated.View>
+    <View style={[styles.banner, { backgroundColor: c.warning + (isDark ? '33' : '20'), borderBottomColor: c.warning }]}>
+      <WifiOff size={14} color={c.warning} />
+      <Text style={[styles.text, { color: c.warning }]}>{t('offline.noInternet')}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 40,
-    backgroundColor: '#b91c1c',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    zIndex: 100,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
   },
-  text: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fef2f2',
-  },
+  text: { fontSize: 12, fontWeight: '600' },
 });

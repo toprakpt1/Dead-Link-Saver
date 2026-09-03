@@ -1,46 +1,48 @@
 import { Tabs } from 'expo-router';
 import { Bookmark, Clock, Sliders } from 'lucide-react-native';
-import { COLORS } from '@/utils/constants';
+import { useThemeStore } from '@/store/themeStore';
+import { useTranslation } from 'react-i18next';
 
 export default function TabLayout() {
+  const { theme } = useThemeStore();
+  const { t } = useTranslation();
+  const c = theme.colors;
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
+          backgroundColor: c.surface,
+          borderTopColor: c.border,
           borderTopWidth: 1,
         },
-        headerStyle: {
-          backgroundColor: COLORS.surface,
-        },
-        headerTintColor: COLORS.text,
+        headerStyle: { backgroundColor: c.surface },
+        headerTintColor: c.text,
         headerShadowVisible: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Saved Links',
-          tabBarLabel: 'Links',
+          title: t('tabs.savedLinks'),
+          tabBarLabel: t('tabs.links'),
           tabBarIcon: ({ color, size }) => <Bookmark size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="forgotten"
         options={{
-          title: 'Forgotten',
-          tabBarLabel: 'Forgotten',
+          title: t('tabs.forgottenLinks'),
+          tabBarLabel: t('tabs.forgotten'),
           tabBarIcon: ({ color, size }) => <Clock size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarLabel: 'Settings',
+          title: t('tabs.settingsTitle'),
+          tabBarLabel: t('tabs.settings'),
           tabBarIcon: ({ color, size }) => <Sliders size={size} color={color} />,
         }}
       />

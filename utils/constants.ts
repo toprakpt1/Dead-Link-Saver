@@ -1,16 +1,51 @@
-export const COLORS = {
-  background: '#0a0e27',
-  surface: '#151b3d',
-  primary: '#6c8eff',
-  secondary: '#a78bfa',
-  accent: '#f472b6',
-  text: '#e2e8f0',
-  textMuted: '#94a3b8',
-  border: '#1e293b',
-  error: '#ef4444',
-  success: '#10b981',
-  warning: '#f59e0b',
-};
+import { themes, type ThemeColors } from '@/theme/themes';
+
+const fallback: ThemeColors = themes.midnight.colors;
+
+function getCurrentColors(): ThemeColors {
+  try {
+    // Avoid circular import: themeStore imports STORAGE_KEYS from here, so lazy-require
+    const req = require('@/store/themeStore') as typeof import('@/store/themeStore');
+    const state = req.useThemeStore.getState?.();
+    if (state?.theme?.colors) return state.theme.colors as ThemeColors;
+  } catch {
+    // before store init
+  }
+  return fallback;
+}
+
+function getCurrentIsDark(): boolean {
+  try {
+    const req = require('@/store/themeStore') as typeof import('@/store/themeStore');
+    const state = req.useThemeStore.getState?.();
+    if (state?.theme) return state.theme.isDark;
+  } catch {
+    return true;
+  }
+  return true;
+}
+
+// Theme-aware COLORS proxy: reads current theme at access time so legacy imports stay themed.
+// Exposes `isDark` for style logic (rgba adjustments, etc.).
+export const COLORS: ThemeColors = new Proxy(fallback as ThemeColors, {
+  get(_target, prop: string) {
+    if (prop === 'isDark') return getCurrentIsDark();
+    const cur = getCurrentColors();
+    const val = (cur as unknown as Record<string, string>)[prop];
+    return val ?? (fallback as unknown as Record<string, string>)[prop];
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getCurrentColors());
+  },
+  getOwnPropertyDescriptor(_t, prop) {
+    const cur = getCurrentColors();
+    return {
+      configurable: true,
+      enumerable: true,
+      value: (cur as unknown as Record<string, string>)[prop as string],
+    };
+  },
+}) as ThemeColors;
 
 export const FORGOTTEN_DAYS_THRESHOLD = 30;
 
@@ -23,6 +58,8 @@ export const STORAGE_KEYS = {
   QUOTA_DAILY_CHECK: '@dead_link_saver:quota:daily_check',
   QUOTA_WEEKLY_BACKUP: '@dead_link_saver:quota:weekly_backup',
   REWARDED_BONUS: '@dead_link_saver:rewarded_bonus',
+  THEME: '@dead_link_saver:theme',
+  LOCALE: '@dead_link_saver:locale',
 };
 
 export const PLATFORM_PATTERNS = {
@@ -47,16 +84,11 @@ export const CATEGORY_KEYWORDS = {
 
 // ── Monetization ──
 export const MONETIZATION = {
-  // Free tier quotas
   FREE_DAILY_CHECK_LIMIT: 1,
   FREE_WEEKLY_BACKUP_LIMIT: 1,
-  // Rewarded caps (spam guard)
   MAX_REWARDED_PER_DAY: 3,
-  // RevenueCat
   ENTITLEMENT_ID: 'pro',
-  // AdMob - replace with real IDs before production
-  ADMOB_REWARDED_ID_ANDROID: 'ca-app-pub-3940256099942544/5224354917', // test id
-  ADMOB_REWARDED_ID_IOS: 'ca-app-pub-3940256099942544/1712485313', // test id
-  // Backup
+  ADMOB_REWARDED_ID_ANDROID: 'ca-app-pub-3940256099942544/5224354917',
+  ADMOB_REWARDED_ID_IOS: 'ca-app-pub-3940256099942544/1712485313',
   BACKUP_FILE_PREFIX: 'dead-link-saver-backup',
 } as const;
