@@ -8,9 +8,20 @@ import { OnboardingTutorial } from '@/components/OnboardingTutorial';
 import { UndoToast } from '@/components/UndoToast';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { hapticSave } from '@/utils/haptics';
+import { useEntitlementStore } from '@/store/entitlementStore';
+import { initAds, preloadRewarded } from '@/services/ads';
+import { initPurchases } from '@/services/purchases';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
+
+  useEffect(() => {
+    // Monetization bootstrap: entitlements + ads + purchases
+    // Pro entitlements loaded from AsyncStorage / RevenueCat, ads preloaded in background
+    void useEntitlementStore.getState().init();
+    void initAds().then(() => void preloadRewarded());
+    void initPurchases();
+  }, []);
 
   useEffect(() => {
     // Handle incoming shared links

@@ -19,6 +19,10 @@ export const STORAGE_KEYS = {
   SETTINGS: '@dead_link_saver:settings',
   CATEGORIES: '@dead_link_saver:categories',
   ONBOARDING: '@dead_link_saver:onboarding',
+  ENTITLEMENT: '@dead_link_saver:entitlement',
+  QUOTA_DAILY_CHECK: '@dead_link_saver:quota:daily_check',
+  QUOTA_WEEKLY_BACKUP: '@dead_link_saver:quota:weekly_backup',
+  REWARDED_BONUS: '@dead_link_saver:rewarded_bonus',
 };
 
 export const PLATFORM_PATTERNS = {
@@ -40,3 +44,19 @@ export const CATEGORY_KEYWORDS = {
   code: ['code', 'programming', 'developer', 'github', 'api', 'software', 'tech', 'bug', 'fix'],
   news: ['news', 'breaking', 'update', 'report', 'announcement', 'press'],
 };
+
+// ── Monetization ──
+export const MONETIZATION = {
+  // Free tier quotas
+  FREE_DAILY_CHECK_LIMIT: 1,
+  FREE_WEEKLY_BACKUP_LIMIT: 1,
+  // Rewarded caps (spam guard)
+  MAX_REWARDED_PER_DAY: 3,
+  // RevenueCat
+  ENTITLEMENT_ID: 'pro',
+  // AdMob - replace with real IDs before production
+  ADMOB_REWARDED_ID_ANDROID: 'ca-app-pub-3940256099942544/5224354917', // test id
+  ADMOB_REWARDED_ID_IOS: 'ca-app-pub-3940256099942544/1712485313', // test id
+  // Backup
+  BACKUP_FILE_PREFIX: 'dead-link-saver-backup',
+} as const;

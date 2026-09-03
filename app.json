@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "deadlinksaver",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deadlinksaver.app"
@@ -13,14 +14,13 @@
     "android": {
       "package": "com.deadlinksaver.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0e27"
       },
       "intentFilters": [
         {
           "action": "SEND",
-          "category": [
-            "DEFAULT"
-          ],
+          "category": ["DEFAULT"],
           "data": [
             {
               "mimeType": "text/plain"
@@ -30,7 +30,26 @@
       ]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
     ],
     "extra": {
       "router": {},

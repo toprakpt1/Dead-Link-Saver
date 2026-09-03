@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { ShieldAlert, Bookmark, Star, Trash2, Tags, CheckSquare, Square } from 'lucide-react-native';
+import { ShieldAlert, Bookmark, Star, Trash2, Tags, CheckSquare } from 'lucide-react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLinkStore } from '@/store/linkStore';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { LinkInput } from '@/components/LinkInput';
 import { SearchBar } from '@/components/SearchBar';
 import { LinkCard } from '@/components/LinkCard';
 import { CategoryPicker } from '@/components/CategoryPicker';
+import { RewardedGate } from '@/components/RewardedGate';
+import { PaywallSheet } from '@/components/PaywallSheet';
 import { COLORS } from '@/utils/constants';
 import { hapticDelete } from '@/utils/haptics';
-import { SavedLink } from '@/store/types';
+import type { SavedLink } from '@/store/types';
 
 export default function HomeScreen() {
   const { links, loadLinks, checkDeadLinks, removeLink, checkProgress, batchDelete, batchUpdateCategory, batchCheckDeadLinks } = useLinkStore();
@@ -21,6 +24,10 @@ export default function HomeScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [batchPickerVisible, setBatchPickerVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [gateVisible, setGateVisible] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
+
   const isChecking = checkProgress !== null;
   const selectionActive = selectionMode || selectedIds.size > 0;
 
@@ -30,8 +37,8 @@ export default function HomeScreen() {
   }, []);
 
   const filteredLinks = links
-    .filter((l) => showFavoritesOnly ? l.isFavorite : true)
-    .filter((l) => selectedCategory ? l.category === selectedCategory : true)
+    .filter((l) => (showFavoritesOnly ? l.isFavorite : true))
+    .filter((l) => (selectedCategory ? l.category === selectedCategory : true))
     .filter((l) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
@@ -43,20 +50,23 @@ export default function HomeScreen() {
       );
     });
 
-  const handleCheckDeadLinks = async () => {
+  const runDeadCheck = async () => {
     if (isChecking) return;
     try {
       const deadIds = await checkDeadLinks();
+      if (!useEntitlementStore.getState().isPro) {
+        await useEntitlementStore.getState().consumeCheck();
+      }
       if (deadIds.length === 0) {
-        Alert.alert('Result', 'No dead links found.');
+        Alert.alert('Sonuç', 'Ölü link bulunamadı.');
       } else {
         Alert.alert(
-          'Dead Links Found',
-          `${deadIds.length} dead link${deadIds.length > 1 ? 's' : ''} found. Delete them?`,
+          'Ölü Link Bulundu',
+          `${deadIds.length} ölü link bulundu. Silinsin mi?`,
           [
-            { text: 'Keep', style: 'cancel' },
+            { text: 'Kalsın', style: 'cancel' },
             {
-              text: 'Delete',
+              text: 'Sil',
               style: 'destructive',
               onPress: () => deadIds.forEach((id) => removeLink(id)),
             },
@@ -66,6 +76,17 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Dead link check failed:', error);
     }
+  };
+
+  const handleCheckDeadLinks = async () => {
+    if (isChecking) return;
+    const ent = useEntitlementStore.getState();
+    if (!ent.canCheckDeadLinks()) {
+      setPendingAction(() => runDeadCheck);
+      setGateVisible(true);
+      return;
+    }
+    await runDeadCheck();
   };
 
   const toggleSelect = (id: string) => {
@@ -110,21 +131,24 @@ export default function HomeScreen() {
     clearSelection();
   };
 
-  const handleBatchCheck = async () => {
+  const runBatchCheck = async () => {
     const ids = Array.from(selectedIds);
     try {
       const deadIds = await batchCheckDeadLinks(ids);
+      if (!useEntitlementStore.getState().isPro) {
+        await useEntitlementStore.getState().consumeCheck();
+      }
       clearSelection();
       if (deadIds.length === 0) {
-        Alert.alert('Result', 'No dead links found in selection.');
+        Alert.alert('Sonuç', 'Seçimde ölü link bulunamadı.');
       } else {
         Alert.alert(
-          'Dead Links Found',
-          `${deadIds.length} dead link${deadIds.length > 1 ? 's' : ''} found in selection. Delete them?`,
+          'Ölü Link Bulundu',
+          `${deadIds.length} ölü link bulundu. Silinsin mi?`,
           [
-            { text: 'Keep', style: 'cancel' },
+            { text: 'Kalsın', style: 'cancel' },
             {
-              text: 'Delete',
+              text: 'Sil',
               style: 'destructive',
               onPress: () => {
                 deadIds.forEach((id) => removeLink(id));
@@ -138,24 +162,26 @@ export default function HomeScreen() {
     }
   };
 
+  const handleBatchCheck = async () => {
+    if (isChecking) return;
+    const ent = useEntitlementStore.getState();
+    if (!ent.canCheckDeadLinks()) {
+      setPendingAction(() => runBatchCheck);
+      setGateVisible(true);
+      return;
+    }
+    await runBatchCheck();
+  };
+
   const renderItem = ({ item }: { item: SavedLink }) => (
-    <LinkCard
-      link={item}
-      selectionMode={selectionActive}
-      isSelected={selectedIds.has(item.id)}
-      onToggleSelect={toggleSelect}
-    />
+    <LinkCard link={item} selectionMode={selectionActive} isSelected={selectedIds.has(item.id)} onToggleSelect={toggleSelect} />
   );
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Bookmark size={48} color={COLORS.textMuted} />
-      <Text style={styles.emptyText}>
-        {showFavoritesOnly ? 'No favorite links yet' : 'No saved links yet'}
-      </Text>
-      <Text style={styles.emptySubtext}>
-        {showFavoritesOnly ? 'Star a link to add it here' : 'Paste a link above to get started'}
-      </Text>
+      <Text style={styles.emptyText}>{showFavoritesOnly ? 'No favorite links yet' : 'No saved links yet'}</Text>
+      <Text style={styles.emptySubtext}>{showFavoritesOnly ? 'Star a link to add it here' : 'Paste a link above to get started'}</Text>
     </View>
   );
 
@@ -163,9 +189,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <LinkInput />
 
-      {links.length > 0 && loaded && (
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-      )}
+      {links.length > 0 && loaded && <SearchBar value={searchQuery} onChangeText={setSearchQuery} />}
 
       {links.length > 0 && loaded && (
         <View>
@@ -184,11 +208,7 @@ export default function HomeScreen() {
                     <Tags size={16} color={COLORS.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handleBatchCheck} disabled={isChecking} style={styles.bulkButton}>
-                    {isChecking ? (
-                      <ActivityIndicator size={16} color={COLORS.primary} />
-                    ) : (
-                      <ShieldAlert size={16} color={COLORS.primary} />
-                    )}
+                    {isChecking ? <ActivityIndicator size={16} color={COLORS.primary} /> : <ShieldAlert size={16} color={COLORS.primary} />}
                   </TouchableOpacity>
                 </View>
               </>
@@ -197,16 +217,17 @@ export default function HomeScreen() {
                 <Text style={styles.count}>{filteredLinks.length} links</Text>
                 <View style={styles.bulkActions}>
                   <TouchableOpacity style={styles.checkButton} onPress={handleCheckDeadLinks} disabled={isChecking}>
-                    {isChecking ? (
-                      <ActivityIndicator size={16} color={COLORS.primary} />
-                    ) : (
-                      <ShieldAlert size={16} color={COLORS.primary} />
-                    )}
+                    {isChecking ? <ActivityIndicator size={16} color={COLORS.primary} /> : <ShieldAlert size={16} color={COLORS.primary} />}
                     <Text style={styles.checkButtonText}>
                       {isChecking ? `${checkProgress!.checked}/${checkProgress!.total} checked` : 'Check Dead Links'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setSelectionMode(true); }} style={styles.selectButton}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectionMode(true);
+                    }}
+                    style={styles.selectButton}
+                  >
                     <CheckSquare size={16} color={COLORS.textMuted} />
                     <Text style={styles.selectButtonText}>Select</Text>
                   </TouchableOpacity>
@@ -222,7 +243,10 @@ export default function HomeScreen() {
           >
             <TouchableOpacity
               style={[styles.filterChip, selectedCategory === null && !showFavoritesOnly && styles.filterChipActive]}
-              onPress={() => { setSelectedCategory(null); setShowFavoritesOnly(false); }}
+              onPress={() => {
+                setSelectedCategory(null);
+                setShowFavoritesOnly(false);
+              }}
             >
               <Text style={[styles.filterChipText, selectedCategory === null && !showFavoritesOnly && styles.filterChipTextActive]}>All</Text>
             </TouchableOpacity>
@@ -231,8 +255,7 @@ export default function HomeScreen() {
               onPress={() => setShowFavoritesOnly((prev) => !prev)}
             >
               <View style={styles.filterChipRow}>
-                <Star size={14} color={showFavoritesOnly ? COLORS.warning : COLORS.textMuted}
-                      fill={showFavoritesOnly ? COLORS.warning : 'none'} />
+                <Star size={14} color={showFavoritesOnly ? COLORS.warning : COLORS.textMuted} fill={showFavoritesOnly ? COLORS.warning : 'none'} />
                 <Text style={[styles.filterChipText, showFavoritesOnly && styles.filterChipTextFav]}>
                   Favorites ({links.filter((l) => l.isFavorite).length})
                 </Text>
@@ -257,18 +280,28 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <FlashList
-        data={filteredLinks}
-        renderItem={renderItem}
-        ListEmptyComponent={renderEmpty}
-        contentContainerStyle={styles.listContent}
+      <FlashList data={filteredLinks} renderItem={renderItem} ListEmptyComponent={renderEmpty} contentContainerStyle={styles.listContent} />
+      <CategoryPicker visible={batchPickerVisible} current="" onSelect={handleBatchCategory} onClose={() => setBatchPickerVisible(false)} />
+
+      <RewardedGate
+        visible={gateVisible}
+        type="check"
+        onClose={() => {
+          setGateVisible(false);
+          setPendingAction(null);
+        }}
+        onRewarded={() => {
+          setGateVisible(false);
+          const action = pendingAction;
+          setPendingAction(null);
+          if (action) void action();
+        }}
+        onGoPro={() => {
+          setGateVisible(false);
+          setPaywallVisible(true);
+        }}
       />
-      <CategoryPicker
-        visible={batchPickerVisible}
-        current=""
-        onSelect={handleBatchCategory}
-        onClose={() => setBatchPickerVisible(false)}
-      />
+      <PaywallSheet visible={paywallVisible} onClose={() => setPaywallVisible(false)} feature="check" />
     </View>
   );
 }
