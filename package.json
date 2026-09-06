@@ -7,7 +7,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -30,19 +32,20 @@
     "lucide-react-native": "^1.16.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-i18next": "^15.7.2",
     "react-native": "0.81.5",
     "react-native-google-mobile-ads": "^15.8.3",
     "react-native-purchases": "^8.12.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
-    "react-i18next": "^15.7.2",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@types/react": "~19.1.10",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^5.0.0"
   },
   "private": true
 }

@@ -13,33 +13,33 @@
 ---
 ## Global Rules
 
-### Theme System — 3 Curated Non-Slop Palettes
+### Theme System — Amber + Link Blue (Warm, Flat 2D)
 > Her tema 4-6 solid renkle sınırlı, flat 2D, shadow yok, WCAG AA. Gradient/neon yok.
 
 | Theme | ID | Background | Surface | Text | Primary | Border | Mood |
 |-------|----|------------|---------|------|---------|--------|------|
-| Midnight | `midnight` | `#0a0e27` | `#151b3d` | `#e2e8f0` | `#6c8eff` | `#1e293b` | Cinematic dark indigo, mevcut brand, pro tool |
-| Paper | `paper` | `#f8f7f4` | `#ffffff` | `#0f172a` | `#0f766e` | `#e2e8f0` | Warm paper, editorial minimal, yüksek okunabilirlik |
-| Graphite | `graphite` | `#0f0f0f` | `#1c1c1e` | `#fafafa` | `#818cf8` | `#27272a` | Neutral true-dark, zinc, sessiz profesyonel |
+| Midnight | `midnight` | `#171310` | `#221c15` | `#fffbeb` | `#f59e0b` | `#3a3128` | Warm espresso dark, amber glow + link blue |
+| Paper | `paper` | `#fffbeb` | `#ffffff` | `#0f172a` | `#d97706` | `#f3e2c7` | Warm amber paper, editorial, yüksek okunabilirlik |
+| Graphite | `graphite` | `#1c1917` | `#292524` | `#fafaf9` | `#fbbf24` | `#44403c` | Neutral stone dark, sessiz profesyonel |
 
-**Ortak tokenlar her temada aynı kalır:** `error #ef4444 / #dc2626`, `success #10b981`, `warning #f59e0b`, `radius 12-16px`, `hairline border rgba`, `press scale 0.97`.
+**Ortak tokenlar:** dark accent `#60a5fa` / light accent `#2563eb`, `error #f87171 / #dc2626`, `success #34d399 / #059669`, `warning #fbbf24 / #b45309`, `radius 12-16px`, `hairline border`, `press scale 0.97`.
 
 ### Color Palette
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#0D9488` | `--color-primary` |
+| Primary | `#D97706` | `--color-primary` |
 | On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#14B8A6` | `--color-secondary` |
-| Accent/CTA | `#EA580C` | `--color-accent` |
-| Background | `#F0FDFA` | `--color-background` |
-| Foreground | `#134E4A` | `--color-foreground` |
-| Muted | `#E8F1F4` | `--color-muted` |
-| Border | `#99F6E4` | `--color-border` |
+| Secondary | `#F59E0B` | `--color-secondary` |
+| Accent/CTA | `#2563EB` | `--color-accent` |
+| Background | `#FFFBEB` | `--color-background` |
+| Foreground | `#0F172A` | `--color-foreground` |
+| Muted | `#FCF6F0` | `--color-muted` |
+| Border | `#F3E2C7` | `--color-border` |
 | Destructive | `#DC2626` | `--color-destructive` |
-| Ring | `#0D9488` | `--color-ring` |
+| Ring | `#D97706` | `--color-ring` |
 
-**Color Notes:** Teal focus + action orange [Accent adjusted from #F97316 for WCAG 3:1]
+**Color Notes:** Warm amber + link blue (dark modda primary `#F59E0B`/`#FBBF24`, accent `#60A5FA` — koyu zeminde kontrast için açıldı)
 ### Typography
 
 - **Heading Font:** Atkinson Hyperlegible

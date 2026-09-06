@@ -1,13 +1,15 @@
 import { LinkMetadata, LinkPlatform } from '@/store/types';
 
 function getMetaContent(html: string, selector: string): string | undefined {
+  // `<meta ... property="og:title" ... content="value" ...>` with the two
+  // attributes in either order, using single or double quotes.
   const regex = new RegExp(
-    `<meta[^>]+(?:${selector})=["']([^"']+)["'][^>]*content=["']([^"']*)["']|` +
-    `<meta[^>]+content=["']([^"']*)["'][^>]+(?:${selector})=["']([^"']+)["']`,
+    `<meta[^>]+(?:${selector}["'])[^>]*content=["']([^"']*)["']|` +
+    `<meta[^>]+content=["']([^"']*)["'][^>]+(?:${selector}["'])`,
     'i'
   );
   const match = html.match(regex);
-  return match?.[1] || match?.[2] || match?.[3] || match?.[4];
+  return match?.[1] || match?.[2];
 }
 
 function getTitle(html: string): string {
