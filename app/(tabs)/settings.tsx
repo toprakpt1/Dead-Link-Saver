@@ -42,11 +42,21 @@ export default function SettingsScreen() {
   const { collections, loadCollections, addCollection, removeCollection } = useCollectionStore();
   const [newName, setNewName] = useState('');
   const isPro = useEntitlementStore((s) => s.isPro);
+  const trialActive = useEntitlementStore((s) => s.proTrialUntil !== null && s.proTrialUntil > Date.now());
+  const trialMinutesLeft = useEntitlementStore((s) =>
+    s.proTrialUntil !== null ? Math.max(0, Math.ceil((s.proTrialUntil - Date.now()) / 60000)) : 0
+  );
+  const slotActive = useEntitlementStore((s) => s.collectionSlotUntil !== null && s.collectionSlotUntil > Date.now());
+  const slotDaysLeft = useEntitlementStore((s) =>
+    s.collectionSlotUntil !== null ? Math.max(0, Math.ceil((s.collectionSlotUntil - Date.now()) / 86400000)) : 0
+  );
   const initEntitlement = useEntitlementStore((s) => s.init);
   const restorePurchases = useEntitlementStore((s) => s.restorePurchases);
   const { themeId, setTheme, theme } = useThemeStore();
   const c = theme.colors;
   const [gateVisible, setGateVisible] = useState(false);
+  const [slotGateVisible, setSlotGateVisible] = useState(false);
+  const [pendingCollectionName, setPendingCollectionName] = useState('');
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<'backup' | 'collections'>('backup');
   const [restoring, setRestoring] = useState(false);
@@ -65,14 +75,30 @@ export default function SettingsScreen() {
   };
 
   const handleAddCollection = () => {
-    if (!newCollectionName.trim()) return;
-    if (!useEntitlementStore.getState().canCreateCollection(collections.length)) {
+    const name = newCollectionName.trim();
+    if (!name) return;
+    const ent = useEntitlementStore.getState();
+    if (!ent.canCreateCollection(collections.length)) {
+      if (!ent.isPro && !ent.isTrialActive() && !ent.isCollectionSlotActive() && ent.getRewardedRemaining() > 0) {
+        setPendingCollectionName(name);
+        setSlotGateVisible(true);
+        return;
+      }
       setPaywallFeature('collections');
       setPaywallVisible(true);
       return;
     }
-    addCollection(newCollectionName);
+    addCollection(name);
     setNewCollectionName('');
+  };
+
+  const handleSlotRewarded = () => {
+    setSlotGateVisible(false);
+    if (pendingCollectionName.trim()) {
+      addCollection(pendingCollectionName.trim());
+      setNewCollectionName('');
+      setPendingCollectionName('');
+    }
   };
 
   const handleRemove = (id: string, name: string) => {
@@ -172,6 +198,11 @@ export default function SettingsScreen() {
               <Text style={[styles.proBullet, { color: c.textMuted }]}>• {t('settings.proBullets.1')}</Text>
               <Text style={[styles.proBullet, { color: c.textMuted }]}>• {t('settings.proBullets.2')}</Text>
             </View>
+            {trialActive && (
+              <Text style={[styles.proActiveNote, { color: c.success }]}>
+                {t('settings.trialActive', { minutes: trialMinutesLeft })}
+              </Text>
+            )}
             <View style={[styles.proCtaBtn, { backgroundColor: c.primary }]}>
               <Crown size={16} color="#fff" />
               <Text style={styles.proCtaText}>{t('settings.proCta')}</Text>
@@ -294,9 +325,14 @@ export default function SettingsScreen() {
       <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>{t('collections.title')}</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>{t('collections.desc')}</Text>
-        {!isPro && (
+        {!isPro && !trialActive && (
           <Text style={[styles.sectionSub, { color: c.textMuted }]}>
-            {t('collections.freeLimit', { used: collections.length, limit: MONETIZATION.FREE_COLLECTION_LIMIT })}
+            {t('collections.freeLimit', { used: collections.length, limit: MONETIZATION.FREE_COLLECTION_LIMIT + (slotActive ? 1 : 0) })}
+          </Text>
+        )}
+        {slotActive && !isPro && !trialActive && (
+          <Text style={[styles.sectionSub, { color: c.success }]}>
+            {t('collections.slotActive', { days: slotDaysLeft })}
           </Text>
         )}
         <View style={styles.addRow}>
@@ -344,6 +380,17 @@ export default function SettingsScreen() {
         onGoPro={() => {
           setGateVisible(false);
           setPaywallFeature('backup');
+          setPaywallVisible(true);
+        }}
+      />
+      <RewardedGate
+        visible={slotGateVisible}
+        type="collectionSlot"
+        onClose={() => { setSlotGateVisible(false); setPendingCollectionName(''); }}
+        onRewarded={handleSlotRewarded}
+        onGoPro={() => {
+          setSlotGateVisible(false);
+          setPaywallFeature('collections');
           setPaywallVisible(true);
         }}
       />

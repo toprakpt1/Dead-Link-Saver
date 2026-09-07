@@ -20,7 +20,7 @@ import type { SavedLink } from '@/store/types';
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const { links, loadLinks, checkDeadLinks, removeLink, checkProgress, batchDelete, batchUpdateCategory, batchCheckDeadLinks } = useLinkStore();
+  const { links, loadLinks, checkDeadLinks, softDeleteMany, checkProgress, batchDelete, batchUpdateCategory, batchCheckDeadLinks } = useLinkStore();
   const { categories, loadCategories, loaded } = useCategoryStore();
   const { collections, loadCollections } = useCollectionStore();
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
@@ -88,7 +88,7 @@ export default function HomeScreen() {
             {
               text: t('common.delete'),
               style: 'destructive',
-              onPress: () => deadIds.forEach((id) => removeLink(id)),
+              onPress: () => softDeleteMany(deadIds),
             },
           ]
         );
@@ -168,7 +168,7 @@ export default function HomeScreen() {
               text: t('common.delete'),
               style: 'destructive',
               onPress: () => {
-                deadIds.forEach((id) => removeLink(id));
+                softDeleteMany(deadIds);
               },
             },
           ]

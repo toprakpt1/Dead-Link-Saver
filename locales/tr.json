@@ -1,6 +1,7 @@
 {
   "undoToast": {
     "deletedPrefix": "Silindi:",
+    "deletedMany": "{{count}} link silindi",
     "link": "link",
     "undo": "Geri al"
   },
@@ -88,6 +89,7 @@
       "Ödüllü reklam butonları tamamen kalkar"
     ],
     "proCta": "Pro'yu Gör",
+    "trialActive": "Pro deneme aktif — {{minutes}} dk kaldı",
     "proActiveNote": "Tüm limitler kalktı. Yedeğini dilediğin kadar alabilirsin.",
     "restore": "Satın almayı geri yükle",
     "restoreSuccessTitle": "Geri yüklendi",
@@ -152,6 +154,9 @@
     "featureAdFreeTitle": "Tamamen reklamsız",
     "featureAdFreeDesc": "Ödüllü reklam butonları tamamen kalkar",
     "buy": "Pro'yu Başlat",
+    "tryTrial": "Pro'yu 1 saat ücretsiz dene (1 reklam)",
+    "trialActiveTitle": "Pro deneme aktif!",
+    "trialActiveBody": "1 saat boyunca sınırsız tarama, yedek ve koleksiyon.",
     "priceNote": "Test modunda tek tıkla aktif olur. Gerçek ödeme RevenueCat ile.",
     "restore": "Satın almayı geri yükle",
     "later": "Şimdilik devam et",
@@ -166,12 +171,18 @@
   },
   "rewarded": {
     "titleCheck": "Günlük tarama hakkın doldu",
+    "titleTrial": "Pro'yu 1 saat ücretsiz dene",
+    "titleSlot": "Bir koleksiyon daha mı lazım?",
+    "descTrial": "1 reklam izle, 1 saat boyunca her şey açılsın — tarama, yedek, koleksiyon.",
+    "descSlot": "1 reklam izle, 7 gün geçerli +1 koleksiyon hakkı kazan ya da Pro ile sınırsız al.",
     "titleBackup": "Haftalık yedek hakkın doldu",
     "descCheck": "İstersen ödüllü reklam izleyip hemen 1 ek tarama açabilirsin, ya da Pro ile sınırsız tara.",
     "descBackup": "İstersen reklam izleyip 1 ek yedek alabilir, ya da Pro ile sınırsız yedekleyebilirsin.",
     "quota": "Bugün kalan ödüllü hak: {{remaining}}/3",
     "watch": "Reklam izle +1 hak kazan",
     "limitReached": "Günlük limit doldu",
+    "waitTrial": "Belki sonra",
+    "waitSlot": "Vazgeç",
     "goPro": "Pro al — sınırsız & reklamsız",
     "waitCheck": "Yarın tekrar dene",
     "waitBackup": "Vazgeç",
@@ -192,6 +203,12 @@
     "multipleFound_one": "Metinde {{count}} link bulundu. Hepsini kaydedelim mi?",
     "multipleFound_other": "Metinde {{count}} link bulundu. Hepsini kaydedelim mi?",
     "saveAll": "Hepsini kaydet",
+    "importFile": ".txt / .csv'den içe aktar",
+    "importEmpty": "Bu dosyada link bulunamadı",
+    "importReadFail": "Dosya okunamadı",
+    "importNoNew": "Dosyadaki tüm linkler zaten kayıtlı",
+    "importConfirmTitle": "Linkler içe aktarılsın mı?",
+    "importConfirm": "{{count}} yeni link bulundu ({{skipped}} zaten kayıtlı). İçe aktarılsın mı?",
     "batchAdded_one": "{{count}} link eklendi",
     "batchAdded_other": "{{count}} link eklendi",
     "batchSkipped_one": "{{count}} atlandı (zaten kayıtlı)",
@@ -305,7 +322,8 @@
     "title": "Koleksiyonlar",
     "desc": "Linkleri kendi listelerinde topla — tez, izlenecekler, referans.",
     "newPlaceholder": "Yeni koleksiyon adı",
-    "freeLimit": "Ücretsiz planda {{used}}/{{limit}} koleksiyon kullanıldı"
+    "freeLimit": "Ücretsiz planda {{used}}/{{limit}} koleksiyon kullanıldı",
+    "slotActive": "Bonus hak aktif — {{days}} gün kaldı"
   },
   "health": {
     "title": "Sağlık Geçmişi",

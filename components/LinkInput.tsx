@@ -8,29 +8,31 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { ClipboardPaste, Save } from 'lucide-react-native';
+import { ClipboardPaste, Save, Upload } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '@/utils/constants';
 import { TUTORIAL_SAMPLE_URL, useLinkStore } from '@/store/linkStore';
 import { useTutorialStore } from '@/store/tutorialStore';
 import { useThemeStore } from '@/store/themeStore';
 import { hapticSave } from '@/utils/haptics';
-import { extractUrls } from '@/services/linkParser';
+import { canonicalKey, extractUrls } from '@/services/linkParser';
 
 export function LinkInput() {
   const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [batchSaving, setBatchSaving] = useState(false);
-  const { addLink, addSampleLink, isLoading } = useLinkStore();
+  const [importing, setImporting] = useState(false);
+  const { addLink, addSampleLink, isLoading, links } = useLinkStore();
   const tutorialStage = useTutorialStore((s) => s.stage);
   const setTutorialStage = useTutorialStore((s) => s.setStage);
   const setSampleLinkId = useTutorialStore((s) => s.setSampleLinkId);
   const isTutorialPasteTarget = tutorialStage === 'paste-link';
   const isDark = useThemeStore((s) => s.theme.isDark);
-  const busy = isLoading || batchSaving;
+  const busy = isLoading || batchSaving || importing;
   const c = COLORS;
-
   const handlePaste = async () => {
     if (isTutorialPasteTarget) {
       setUrl(TUTORIAL_SAMPLE_URL);
@@ -122,6 +124,57 @@ export function LinkInput() {
       ]
     );
   };
+  const handleImportFile = async () => {
+    if (busy) return;
+    setImporting(true);
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ['text/plain', 'text/csv', 'text/markdown'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (picked.canceled) return;
+      const uri = picked.assets[0]?.uri;
+      if (!uri) return;
+      let text = '';
+      try {
+        text = await FileSystem.readAsStringAsync(uri);
+      } catch {
+        Alert.alert(t('common.error'), t('linkInput.importReadFail'));
+        return;
+      }
+      const found = extractUrls(text);
+      if (found.length === 0) {
+        Alert.alert(t('common.error'), t('linkInput.importEmpty'));
+        return;
+      }
+      const known: Record<string, true> = {};
+      for (const link of links) known[canonicalKey(link.url)] = true;
+      const fresh: string[] = [];
+      for (const raw of found) {
+        const key = canonicalKey(raw);
+        if (!known[key]) {
+          known[key] = true;
+          fresh.push(raw);
+        }
+      }
+      const duplicates = found.length - fresh.length;
+      if (fresh.length === 0) {
+        Alert.alert(t('common.error'), t('linkInput.importNoNew'));
+        return;
+      }
+      Alert.alert(
+        t('linkInput.importConfirmTitle'),
+        t('linkInput.importConfirm', { count: fresh.length, skipped: duplicates }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('linkInput.saveAll'), onPress: () => void saveBatch(fresh) },
+        ]
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -160,6 +213,15 @@ export function LinkInput() {
           </View>
         )}
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.importButton, { borderColor: c.border }, busy && styles.saveButtonDisabled]}
+        onPress={handleImportFile}
+        disabled={busy}
+      >
+        <Upload size={16} color={c.primary} />
+        <Text style={[styles.importButtonText, { color: c.primary }]}>{t('linkInput.importFile')}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -186,4 +248,6 @@ const styles = StyleSheet.create({
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   saveButtonText: { fontSize: 16, fontWeight: '600' },
+  importButton: { borderWidth: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  importButtonText: { fontSize: 14, fontWeight: '600' },
 });

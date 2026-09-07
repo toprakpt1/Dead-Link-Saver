@@ -53,8 +53,16 @@ interface EntitlementState {
   dailyCheck: DailyQuota | null;
   weeklyBackup: WeeklyQuota | null;
   rewardedBonus: RewardedBonus | null;
+  proTrialUntil: number | null;
+  collectionSlotUntil: number | null;
   init: () => Promise<void>;
   setPro: (value: boolean) => Promise<void>;
+  isTrialActive: () => boolean;
+  getTrialMinutesLeft: () => number;
+  grantProTrial: () => Promise<boolean>;
+  isCollectionSlotActive: () => boolean;
+  getCollectionSlotDaysLeft: () => number;
+  grantCollectionSlot: () => Promise<boolean>;
   canCheckDeadLinks: () => boolean;
   canBackup: () => boolean;
   canCreateCollection: (currentCount: number) => boolean;
@@ -117,6 +125,8 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
   dailyCheck: null,
   weeklyBackup: null,
   rewardedBonus: null,
+  proTrialUntil: null,
+  collectionSlotUntil: null,
 
   init: async () => {
     set({ isLoading: true });
@@ -148,12 +158,16 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
       const dailyCheck = await loadQuota<DailyQuota>(STORAGE_KEYS.QUOTA_DAILY_CHECK);
       const weeklyBackup = await loadQuota<WeeklyQuota>(STORAGE_KEYS.QUOTA_WEEKLY_BACKUP);
       const rewardedBonus = await loadQuota<RewardedBonus>(STORAGE_KEYS.REWARDED_BONUS);
+      const proTrialUntil = await loadQuota<number>(STORAGE_KEYS.PRO_TRIAL);
+      const collectionSlotUntil = await loadQuota<number>(STORAGE_KEYS.COLLECTION_SLOT);
 
       set({
         isPro,
         dailyCheck,
         weeklyBackup,
         rewardedBonus,
+        proTrialUntil: typeof proTrialUntil === 'number' && proTrialUntil > Date.now() ? proTrialUntil : null,
+        collectionSlotUntil: typeof collectionSlotUntil === 'number' && collectionSlotUntil > Date.now() ? collectionSlotUntil : null,
         isLoading: false,
         isInitialized: true,
       });
@@ -170,9 +184,10 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
   },
 
   resetIfNeeded: async () => {
-    const { dailyCheck, weeklyBackup, rewardedBonus } = get();
+    const { dailyCheck, weeklyBackup, rewardedBonus, proTrialUntil, collectionSlotUntil } = get();
     const today = todayStr();
     const week = weekStr();
+    const now = Date.now();
 
     let nextDaily = dailyCheck;
     let nextWeekly = weeklyBackup;
@@ -192,6 +207,20 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
       changed = true;
     }
 
+    let nextTrial = proTrialUntil;
+    if (proTrialUntil !== null && proTrialUntil <= now) {
+      nextTrial = null;
+      await AsyncStorage.removeItem(STORAGE_KEYS.PRO_TRIAL);
+    }
+    let nextSlot = collectionSlotUntil;
+    if (collectionSlotUntil !== null && collectionSlotUntil <= now) {
+      nextSlot = null;
+      await AsyncStorage.removeItem(STORAGE_KEYS.COLLECTION_SLOT);
+    }
+    if (nextTrial !== proTrialUntil || nextSlot !== collectionSlotUntil) {
+      set({ proTrialUntil: nextTrial, collectionSlotUntil: nextSlot });
+    }
+
     if (changed) {
       set({ dailyCheck: nextDaily, weeklyBackup: nextWeekly, rewardedBonus: nextBonus });
       await AsyncStorage.setItem(STORAGE_KEYS.QUOTA_DAILY_CHECK, JSON.stringify(nextDaily));
@@ -200,9 +229,65 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
     }
   },
 
+  isTrialActive: () => {
+    const { proTrialUntil } = get();
+    return proTrialUntil !== null && proTrialUntil > Date.now();
+  },
+
+  getTrialMinutesLeft: () => {
+    const { proTrialUntil } = get();
+    if (proTrialUntil === null) return 0;
+    return Math.max(0, Math.ceil((proTrialUntil - Date.now()) / 60000));
+  },
+
+  grantProTrial: async () => {
+    await get().resetIfNeeded();
+    if (get().isPro || get().isTrialActive()) return false;
+    if (get().getRewardedRemaining() <= 0) return false;
+    const today = todayStr();
+    const bonus = get().rewardedBonus;
+    const nextBonus: RewardedBonus = {
+      date: today,
+      count: (bonus?.date === today ? bonus.count : 0) + 1,
+    };
+    const until = Date.now() + MONETIZATION.PRO_TRIAL_HOURS * 60 * 60 * 1000;
+    set({ rewardedBonus: nextBonus, proTrialUntil: until });
+    await AsyncStorage.setItem(STORAGE_KEYS.REWARDED_BONUS, JSON.stringify(nextBonus));
+    await AsyncStorage.setItem(STORAGE_KEYS.PRO_TRIAL, JSON.stringify(until));
+    return true;
+  },
+
+  isCollectionSlotActive: () => {
+    const { collectionSlotUntil } = get();
+    return collectionSlotUntil !== null && collectionSlotUntil > Date.now();
+  },
+
+  getCollectionSlotDaysLeft: () => {
+    const { collectionSlotUntil } = get();
+    if (collectionSlotUntil === null) return 0;
+    return Math.max(0, Math.ceil((collectionSlotUntil - Date.now()) / 86400000));
+  },
+
+  grantCollectionSlot: async () => {
+    await get().resetIfNeeded();
+    if (get().isPro || get().isTrialActive() || get().isCollectionSlotActive()) return false;
+    if (get().getRewardedRemaining() <= 0) return false;
+    const today = todayStr();
+    const bonus = get().rewardedBonus;
+    const nextBonus: RewardedBonus = {
+      date: today,
+      count: (bonus?.date === today ? bonus.count : 0) + 1,
+    };
+    const until = Date.now() + MONETIZATION.COLLECTION_SLOT_DAYS * 24 * 60 * 60 * 1000;
+    set({ rewardedBonus: nextBonus, collectionSlotUntil: until });
+    await AsyncStorage.setItem(STORAGE_KEYS.REWARDED_BONUS, JSON.stringify(nextBonus));
+    await AsyncStorage.setItem(STORAGE_KEYS.COLLECTION_SLOT, JSON.stringify(until));
+    return true;
+  },
+
   canCheckDeadLinks: () => {
     const state = get();
-    if (state.isPro) return true;
+    if (state.isPro || get().isTrialActive()) return true;
     const today = todayStr();
     const used = state.dailyCheck?.date === today ? state.dailyCheck.count : 0;
     return used < MONETIZATION.FREE_DAILY_CHECK_LIMIT;
@@ -210,20 +295,21 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
 
   canBackup: () => {
     const state = get();
-    if (state.isPro) return true;
+    if (state.isPro || get().isTrialActive()) return true;
     const week = weekStr();
     const used = state.weeklyBackup?.week === week ? state.weeklyBackup.count : 0;
     return used < MONETIZATION.FREE_WEEKLY_BACKUP_LIMIT;
   },
 
   canCreateCollection: (currentCount: number) => {
-    if (get().isPro) return true;
-    return currentCount < MONETIZATION.FREE_COLLECTION_LIMIT;
+    if (get().isPro || get().isTrialActive()) return true;
+    const limit = MONETIZATION.FREE_COLLECTION_LIMIT + (get().isCollectionSlotActive() ? 1 : 0);
+    return currentCount < limit;
   },
 
   getRemainingChecks: () => {
     const state = get();
-    if (state.isPro) return Infinity;
+    if (state.isPro || get().isTrialActive()) return Infinity;
     const today = todayStr();
     const used = state.dailyCheck?.date === today ? state.dailyCheck.count : 0;
     return Math.max(0, MONETIZATION.FREE_DAILY_CHECK_LIMIT - used);
@@ -231,7 +317,7 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
 
   getRemainingBackups: () => {
     const state = get();
-    if (state.isPro) return Infinity;
+    if (state.isPro || get().isTrialActive()) return Infinity;
     const week = weekStr();
     const used = state.weeklyBackup?.week === week ? state.weeklyBackup.count : 0;
     return Math.max(0, MONETIZATION.FREE_WEEKLY_BACKUP_LIMIT - used);
@@ -245,7 +331,7 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
   },
 
   consumeCheck: async () => {
-    if (get().isPro) return;
+    if (get().isPro || get().isTrialActive()) return;
     await get().resetIfNeeded();
     const today = todayStr();
     const current = get().dailyCheck;
@@ -258,7 +344,7 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
   },
 
   consumeBackup: async () => {
-    if (get().isPro) return;
+    if (get().isPro || get().isTrialActive()) return;
     await get().resetIfNeeded();
     const week = weekStr();
     const current = get().weeklyBackup;

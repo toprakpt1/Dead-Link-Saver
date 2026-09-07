@@ -39,15 +39,18 @@ class DeadLinkWidgetProvider : AppWidgetProvider() {
 
     private fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.widget_dead_links)
-        val links = readLinks(context)
+        val payload = readPayload(context)
+        val links = payload.optJSONArray("links") ?: JSONArray()
+        val deadCount = payload.optInt("deadCount", 0)
 
         views.setOnClickPendingIntent(R.id.widget_header, appIntent(context, "deadlinksaver://", 200))
         views.setOnClickPendingIntent(R.id.widget_save_btn, appIntent(context, "deadlinksaver://", 201))
-
-        val rows = intArrayOf(R.id.widget_row_0, R.id.widget_row_1, R.id.widget_row_2)
-        val titles = intArrayOf(R.id.widget_title_0, R.id.widget_title_1, R.id.widget_title_2)
-        val metas = intArrayOf(R.id.widget_meta_0, R.id.widget_meta_1, R.id.widget_meta_2)
-        var visible = 0
+        if (deadCount > 0) {
+            views.setViewVisibility(R.id.widget_dead_badge, View.VISIBLE)
+            views.setTextViewText(R.id.widget_dead_badge, "$deadCount dead")
+        } else {
+            views.setViewVisibility(R.id.widget_dead_badge, View.GONE)
+        }
         for (i in rows.indices) {
             val item = links.optJSONObject(i)
             if (item == null) {
@@ -66,16 +69,13 @@ class DeadLinkWidgetProvider : AppWidgetProvider() {
         manager.updateAppWidget(widgetId, views)
     }
 
-    private fun readLinks(context: Context): JSONArray {
+    private fun readPayload(context: Context): JSONObject {
         try {
             val file = File(context.filesDir, "widget-data.json")
-            if (file.exists()) {
-                val links = JSONObject(file.readText()).optJSONArray("links")
-                if (links != null) return links
-            }
+            if (file.exists()) return JSONObject(file.readText())
         } catch (_: Exception) {
         }
-        return JSONArray()
+        return JSONObject()
     }
 
     private fun appIntent(context: Context, uri: String, code: Int): PendingIntent {
@@ -111,6 +111,16 @@ const LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
             android:textColor="#FFFBEB"
             android:textSize="14sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_dead_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1 dead"
+            android:textColor="#FCA5A5"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/widget_save_btn"

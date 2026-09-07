@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { Crown, Check, X, Zap, HardDrive, Ban } from 'lucide-react-native';
+import { Crown, Check, X, Zap, HardDrive, Ban, Gift } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '@/utils/constants';
 import { useThemeStore } from '@/store/themeStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
+import { showRewarded, preloadRewarded } from '@/services/ads';
 
 interface PaywallSheetProps {
   visible: boolean;
@@ -48,6 +49,25 @@ export function PaywallSheet({ visible, onClose, feature = 'general' }: PaywallS
       setLoading(false);
     }
   };
+
+  const handleTrial = async () => {
+    setLoading(true);
+    try {
+      await preloadRewarded();
+      const success = await showRewarded();
+      if (success && (await useEntitlementStore.getState().grantProTrial())) {
+        Alert.alert(t('paywall.trialActiveTitle'), t('paywall.trialActiveBody'));
+        onClose();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const trialAvailable =
+    !useEntitlementStore((s) => s.isPro) &&
+    !useEntitlementStore((s) => s.proTrialUntil !== null && s.proTrialUntil > Date.now()) &&
+    useEntitlementStore((s) => s.getRewardedRemaining()) > 0;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -103,7 +123,13 @@ export function PaywallSheet({ visible, onClose, feature = 'general' }: PaywallS
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buyText}>{t('paywall.buy')}</Text>}
           </Pressable>
 
-          <Text style={[styles.priceNote, { color: c.textMuted }]}>{t('paywall.priceNote')}</Text>
+          {trialAvailable && (
+            <Pressable onPress={handleTrial} disabled={loading} style={[styles.trialBtn, { borderColor: c.primary }]}>
+              <Gift size={16} color={c.primary} />
+              <Text style={[styles.trialText, { color: c.primary }]}>{t('paywall.tryTrial')}</Text>
+            </Pressable>
+          )}
+
 
           <Pressable onPress={handleRestore} disabled={loading} style={styles.restoreBtn}>
             <Text style={[styles.restoreText, { color: c.primary }]}>{t('paywall.restore')}</Text>
@@ -133,6 +159,8 @@ const styles = StyleSheet.create({
   featureDesc: { fontSize: 12 },
   buyBtn: { paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 6 },
   buyText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  trialBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
+  trialText: { fontWeight: '700', fontSize: 14 },
   priceNote: { fontSize: 11, textAlign: 'center' },
   restoreBtn: { alignItems: 'center', paddingVertical: 6 },
   restoreText: { fontSize: 13, fontWeight: '600' },

@@ -9,15 +9,17 @@ import { hapticUndo } from '@/utils/haptics';
 export function UndoToast() {
   const { t } = useTranslation();
   const deletedLink = useLinkStore((s) => s.deletedLink);
+  const deletedLinks = useLinkStore((s) => s.deletedLinks);
   const undoDelete = useLinkStore((s) => s.undoDelete);
   const [visible, setVisible] = useState(false);
   const translateY = useRef(new Animated.Value(80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   useThemeStore((s) => s.themeId);
   const c = COLORS;
+  const deletedCount = deletedLinks.length + (deletedLink ? 1 : 0);
 
   useEffect(() => {
-    if (deletedLink) {
+    if (deletedCount > 0) {
       setVisible(true);
       Animated.parallel([
         Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
@@ -29,14 +31,16 @@ export function UndoToast() {
         Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start(() => setVisible(false));
     }
-  }, [deletedLink]);
+  }, [deletedCount, translateY, opacity]);
 
   if (!visible) return null;
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: c.surface, borderColor: c.border, transform: [{ translateY }], opacity }]}>
       <Text style={[styles.text, { color: c.text }]} numberOfLines={1}>
-        {t('undoToast.deletedPrefix')} {deletedLink?.metadata.title ?? t('undoToast.link')}
+        {deletedCount > 1
+          ? t('undoToast.deletedMany', { count: deletedCount })
+          : `${t('undoToast.deletedPrefix')} ${deletedLink?.metadata.title ?? t('undoToast.link')}`}
       </Text>
       <TouchableOpacity onPress={() => { hapticUndo(); undoDelete(); }} style={styles.undoButton}>
         <Text style={[styles.undoText, { color: c.primary }]}>{t('undoToast.undo')}</Text>

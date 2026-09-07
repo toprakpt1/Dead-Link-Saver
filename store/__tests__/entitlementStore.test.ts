@@ -33,6 +33,8 @@ beforeEach(async () => {
     dailyCheck: null,
     weeklyBackup: null,
     rewardedBonus: null,
+    proTrialUntil: null,
+    collectionSlotUntil: null,
   });
 });
 
@@ -151,7 +153,7 @@ describe('purchasing', () => {
     await useEntitlementStore.getState().setPro(true);
     await expect(useEntitlementStore.getState().restorePurchases()).resolves.toBe(true);
   });
-});
+  });
 
 describe('canCreateCollection', () => {
   it('allows up to the free limit for free users', () => {
@@ -165,5 +167,55 @@ describe('canCreateCollection', () => {
   it('allows unlimited collections for pro users', () => {
     useEntitlementStore.setState({ isPro: true });
     expect(useEntitlementStore.getState().canCreateCollection(99)).toBe(true);
+  });
+});
+
+describe('pro trial', () => {
+  it('grantProTrial unlocks checks and backups for an hour', async () => {
+    await useEntitlementStore.getState().init();
+    expect(await useEntitlementStore.getState().grantProTrial()).toBe(true);
+    const state = useEntitlementStore.getState();
+    expect(state.isTrialActive()).toBe(true);
+    expect(state.getTrialMinutesLeft()).toBeGreaterThan(0);
+    expect(state.canCheckDeadLinks()).toBe(true);
+    expect(state.canBackup()).toBe(true);
+    expect(state.canCreateCollection(99)).toBe(true);
+    expect(state.getRewardedRemaining()).toBe(MONETIZATION.MAX_REWARDED_PER_DAY - 1);
+  });
+
+  it('refuses a second trial while one is active', async () => {
+    await useEntitlementStore.getState().init();
+    expect(await useEntitlementStore.getState().grantProTrial()).toBe(true);
+    expect(await useEntitlementStore.getState().grantProTrial()).toBe(false);
+  });
+
+  it('treats an expired trial as inactive', async () => {
+    await useEntitlementStore.getState().init();
+    await useEntitlementStore.getState().consumeCheck();
+    expect(useEntitlementStore.getState().canCheckDeadLinks()).toBe(false);
+    useEntitlementStore.setState({ proTrialUntil: Date.now() + 60 * 60 * 1000 });
+    expect(useEntitlementStore.getState().canCheckDeadLinks()).toBe(true);
+    useEntitlementStore.setState({ proTrialUntil: Date.now() - 1000 });
+    await useEntitlementStore.getState().resetIfNeeded();
+    expect(useEntitlementStore.getState().isTrialActive()).toBe(false);
+    expect(useEntitlementStore.getState().canCheckDeadLinks()).toBe(false);
+  });
+});
+
+describe('collection slot', () => {
+  it('grantCollectionSlot adds exactly one collection slot', async () => {
+    await useEntitlementStore.getState().init();
+    expect(await useEntitlementStore.getState().grantCollectionSlot()).toBe(true);
+    const state = useEntitlementStore.getState();
+    expect(state.isCollectionSlotActive()).toBe(true);
+    expect(state.getCollectionSlotDaysLeft()).toBeGreaterThan(0);
+    expect(state.canCreateCollection(MONETIZATION.FREE_COLLECTION_LIMIT)).toBe(true);
+    expect(state.canCreateCollection(MONETIZATION.FREE_COLLECTION_LIMIT + 1)).toBe(false);
+  });
+
+  it('refuses a second slot while one is active', async () => {
+    await useEntitlementStore.getState().init();
+    expect(await useEntitlementStore.getState().grantCollectionSlot()).toBe(true);
+    expect(await useEntitlementStore.getState().grantCollectionSlot()).toBe(false);
   });
 });

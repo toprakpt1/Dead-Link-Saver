@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import { initNotifications, addNotificationResponseListener } from '@/services/notifications';
 import { registerBackgroundScan } from '@/services/backgroundScan';
 import { syncWidgetData } from '@/services/widgetSync';
+import { extractUrls } from '@/services/linkParser';
 
 export default function RootLayout() {
   const { addLink } = useLinkStore();
@@ -40,15 +41,22 @@ export default function RootLayout() {
 
   useEffect(() => {
     const handleUrl = async (event: { url: string }) => {
-      const { path, queryParams } = Linking.parse(event.url);
-      if (queryParams?.url && typeof queryParams.url === 'string') {
+      const { queryParams } = Linking.parse(event.url);
+      const sharedText = Object.values(queryParams ?? [])
+        .filter((v): v is string => typeof v === 'string')
+        .join('\n');
+      const urls = extractUrls(sharedText || event.url);
+      if (urls.length === 0) return;
+      let saved = false;
+      for (const raw of urls) {
         try {
-          await addLink(queryParams.url);
-          hapticSave();
+          await addLink(raw);
+          saved = true;
         } catch (error) {
           console.error('Failed to add shared link:', error);
         }
       }
+      if (saved) hapticSave();
     };
     const subscription = Linking.addEventListener('url', handleUrl);
     Linking.getInitialURL().then((url) => {

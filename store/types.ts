@@ -65,11 +65,13 @@ export interface LinkStore {
   links: SavedLink[];
   isLoading: boolean;
   deletedLink: SavedLink | null;
+  deletedLinks: SavedLink[];
   checkProgress: { checked: number; total: number } | null;
   addLink: (url: string) => Promise<void>;
   addSampleLink: () => Promise<SavedLink>;
   removeLink: (id: string) => void;
   softDelete: (id: string) => void;
+  softDeleteMany: (ids: string[]) => void;
   undoDelete: () => void;
   toggleFavorite: (id: string) => void;
   updateStatus: (id: string, status: LinkStatus) => void;

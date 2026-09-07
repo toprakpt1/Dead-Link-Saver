@@ -13,6 +13,7 @@ export interface WidgetLink {
 
 export interface WidgetPayload {
   links: WidgetLink[];
+  deadCount: number;
   updatedAt: number;
 }
 
@@ -22,6 +23,7 @@ export interface WidgetPayload {
 // deadlinksaver://link/<id>; the save button opens deadlinksaver:// and the
 // foreground ClipboardPrompt handles the clipboard (Android 10+ blocks
 // background clipboard reads, so the widget never reads it itself).
+// deadCount drives the header badge so the dead total survives the 3-row cut.
 export function buildWidgetPayload(links: SavedLink[]): WidgetPayload {
   return {
     links: links.slice(0, WIDGET_MAX_LINKS).map((l) => ({
@@ -30,18 +32,19 @@ export function buildWidgetPayload(links: SavedLink[]): WidgetPayload {
       url: l.url,
       isDead: l.isDead,
     })),
+    deadCount: links.filter((l) => l.isDead).length,
     updatedAt: Date.now(),
   };
 }
 
-let lastLinksJson = '';
+let lastPayloadJson = '';
 
 export async function syncWidgetData(links: SavedLink[]): Promise<void> {
   try {
     const payload = buildWidgetPayload(links);
-    const linksJson = JSON.stringify(payload.links);
-    if (linksJson === lastLinksJson) return;
-    lastLinksJson = linksJson;
+    const payloadJson = JSON.stringify({ links: payload.links, deadCount: payload.deadCount });
+    if (payloadJson === lastPayloadJson) return;
+    lastPayloadJson = payloadJson;
     // documentDirectory == app files dir on Android — exactly what the
     // native provider reads (context.filesDir).
     const baseDir = FileSystem.documentDirectory;

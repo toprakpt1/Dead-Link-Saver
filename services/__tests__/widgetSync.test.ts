@@ -37,11 +37,12 @@ describe('buildWidgetPayload', () => {
       linkAt('https://a.com', { metadata: { title: 'A' }, isDead: true }),
       linkAt('https://b.com'),
       linkAt('https://c.com'),
-      linkAt('https://d.com'),
+      linkAt('https://d.com', { isDead: true }),
     ];
     const payload = buildWidgetPayload(links);
     expect(payload.links).toHaveLength(WIDGET_MAX_LINKS);
     expect(payload.links[0]).toMatchObject({ title: 'A', isDead: true });
+    expect(payload.deadCount).toBe(2);
     expect(typeof payload.updatedAt).toBe('number');
   });
 

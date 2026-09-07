@@ -65,6 +65,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
   links: [],
   isLoading: false,
   deletedLink: null,
+  deletedLinks: [],
   checkProgress: null,
 
   loadLinks: async () => {
@@ -184,41 +185,65 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     await storage.saveLinks(updatedLinks);
     return sampleLink;
   },
-
   removeLink: (id: string) => {
-    const updatedLinks = get().links.filter((link) => link.id !== id);
-    set({ links: updatedLinks });
-    storage.saveLinks(updatedLinks);
-    useCollectionStore.getState().pruneLink(id);
+    get().softDelete(id);
   },
 
   softDelete: (id: string) => {
     const link = get().links.find((l) => l.id === id);
     if (!link) return;
 
-    if (deleteTimer) clearTimeout(deleteTimer);
+    if (deleteTimer) {
+      clearTimeout(deleteTimer);
+      deleteTimer = null;
+    }
 
     const updatedLinks = get().links.filter((l) => l.id !== id);
-    set({ links: updatedLinks, deletedLink: link });
+    set({ links: updatedLinks, deletedLink: link, deletedLinks: [] });
     storage.saveLinks(updatedLinks);
 
     deleteTimer = setTimeout(() => {
+      useCollectionStore.getState().pruneLink(id);
       set({ deletedLink: null });
       deleteTimer = null;
     }, 5000);
   },
 
-  undoDelete: () => {
-    const deletedLink = get().deletedLink;
-    if (!deletedLink) return;
+  softDeleteMany: (ids: string[]) => {
+    if (ids.length === 0) return;
+    const removed = get().links.filter((l) => ids.includes(l.id));
+    if (removed.length === 0) return;
 
     if (deleteTimer) {
       clearTimeout(deleteTimer);
       deleteTimer = null;
     }
 
-    const updatedLinks = [deletedLink, ...get().links];
-    set({ links: updatedLinks, deletedLink: null });
+    const updatedLinks = get().links.filter((l) => !ids.includes(l.id));
+    set({ links: updatedLinks, deletedLink: null, deletedLinks: removed });
+    storage.saveLinks(updatedLinks);
+
+    deleteTimer = setTimeout(() => {
+      const prune = useCollectionStore.getState().pruneLink;
+      removed.forEach((l) => prune(l.id));
+      set({ deletedLinks: [] });
+      deleteTimer = null;
+    }, 5000);
+  },
+
+  undoDelete: () => {
+    const deletedLink = get().deletedLink;
+    const deletedLinks = get().deletedLinks;
+    if (!deletedLink && deletedLinks.length === 0) return;
+
+    if (deleteTimer) {
+      clearTimeout(deleteTimer);
+      deleteTimer = null;
+    }
+
+    const restored = [...(deletedLink ? [deletedLink] : []), ...deletedLinks];
+    const updatedLinks = [...restored, ...get().links];
+    set({ links: updatedLinks, deletedLink: null, deletedLinks: [] });
     storage.saveLinks(updatedLinks);
   },
 
@@ -247,10 +272,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
   },
 
   batchDelete: (ids: string[]) => {
-    const updatedLinks = get().links.filter((link) => !ids.includes(link.id));
-    set({ links: updatedLinks });
-    storage.saveLinks(updatedLinks);
-    ids.forEach((id) => useCollectionStore.getState().pruneLink(id));
+    get().softDeleteMany(ids);
   },
 
   batchUpdateCategory: (ids: string[], category) => {

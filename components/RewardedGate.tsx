@@ -7,11 +7,11 @@ import { useThemeStore } from '@/store/themeStore';
 import { showRewarded, preloadRewarded } from '@/services/ads';
 import { useEntitlementStore } from '@/store/entitlementStore';
 
-type GateType = 'check' | 'backup';
+export type RewardedGateType = 'check' | 'backup' | 'proTrial' | 'collectionSlot';
 
 interface RewardedGateProps {
   visible: boolean;
-  type: GateType;
+  type: RewardedGateType;
   onClose: () => void;
   onRewarded: () => void;
   onGoPro: () => void;
@@ -23,8 +23,10 @@ export function RewardedGate({ visible, type, onClose, onRewarded, onGoPro }: Re
   const rewardedRemaining = useEntitlementStore((s) => s.getRewardedRemaining());
   const isDark = useThemeStore((s) => s.theme.isDark);
   const c = COLORS;
-  const title = type === 'check' ? t('rewarded.titleCheck') : t('rewarded.titleBackup');
-  const desc = type === 'check' ? t('rewarded.descCheck') : t('rewarded.descBackup');
+  const copyKey = type === 'check' ? 'Check' : type === 'backup' ? 'Backup' : type === 'proTrial' ? 'Trial' : 'Slot';
+  const title = t(`rewarded.title${copyKey}`);
+  const desc = t(`rewarded.desc${copyKey}`);
+  const waitLabel = t(`rewarded.wait${copyKey}`);
 
   const handleRewarded = async () => {
     if (rewardedRemaining <= 0) return;
@@ -33,8 +35,15 @@ export function RewardedGate({ visible, type, onClose, onRewarded, onGoPro }: Re
       await preloadRewarded();
       const success = await showRewarded();
       if (success) {
-        await useEntitlementStore.getState().grantRewardedBonus(type);
-        onRewarded();
+        const ent = useEntitlementStore.getState();
+        if (type === 'proTrial') {
+          if (await ent.grantProTrial()) onRewarded();
+        } else if (type === 'collectionSlot') {
+          if (await ent.grantCollectionSlot()) onRewarded();
+        } else {
+          await ent.grantRewardedBonus(type);
+          onRewarded();
+        }
       }
     } finally {
       setLoading(false);
@@ -82,7 +91,7 @@ export function RewardedGate({ visible, type, onClose, onRewarded, onGoPro }: Re
           </Pressable>
 
           <Pressable onPress={onClose} style={styles.secondaryBtn}>
-            <Text style={[styles.secondaryText, { color: c.textMuted }]}>{type === 'check' ? t('rewarded.waitCheck') : t('rewarded.waitBackup')}</Text>
+            <Text style={[styles.secondaryText, { color: c.textMuted }]}>{waitLabel}</Text>
           </Pressable>
 
           <Text style={[styles.footnote, { color: c.textMuted }]}>{t('rewarded.footnote')}</Text>

@@ -66,6 +66,7 @@ beforeEach(() => {
     links: [],
     isLoading: false,
     deletedLink: null,
+    deletedLinks: [],
     checkProgress: null,
   });
 });
@@ -136,11 +137,17 @@ describe('addSampleLink', () => {
 });
 
 describe('delete & undo', () => {
-  it('removeLink deletes the link', () => {
-    useLinkStore.setState({ links: [linkAt('https://a.com')] });
+  it('removeLink deletes the link but keeps it undoable', () => {
+    const link = linkAt('https://a.com');
+    useLinkStore.setState({ links: [link] });
     useLinkStore.getState().removeLink('id-https://a.com');
     expect(useLinkStore.getState().links).toHaveLength(0);
+    expect(useLinkStore.getState().deletedLink).toEqual(link);
     expect(storageMock.saveLinks).toHaveBeenCalledWith([]);
+
+    useLinkStore.getState().undoDelete();
+    expect(useLinkStore.getState().links).toEqual([link]);
+    expect(useLinkStore.getState().deletedLink).toBeNull();
   });
 
   it('softDelete removes the link but undo restores it', () => {
@@ -156,6 +163,26 @@ describe('delete & undo', () => {
     expect(useLinkStore.getState().deletedLink).toBeNull();
   });
 
+  it('softDeleteMany removes a batch but undo restores it', () => {
+    const links = [linkAt('https://a.com'), linkAt('https://b.com'), linkAt('https://c.com')];
+    useLinkStore.setState({ links });
+
+    useLinkStore.getState().softDeleteMany(['id-https://a.com', 'id-https://c.com']);
+    expect(useLinkStore.getState().links.map((l) => l.url)).toEqual(['https://b.com']);
+    expect(useLinkStore.getState().deletedLinks.map((l) => l.url)).toEqual([
+      'https://a.com',
+      'https://c.com',
+    ]);
+
+    useLinkStore.getState().undoDelete();
+    expect(useLinkStore.getState().links.map((l) => l.url)).toEqual([
+      'https://a.com',
+      'https://c.com',
+      'https://b.com',
+    ]);
+    expect(useLinkStore.getState().deletedLinks).toEqual([]);
+  });
+
   it('clears deletedLink after the undo window expires', () => {
     vi.useFakeTimers();
     const link = linkAt('https://a.com');
@@ -166,6 +193,19 @@ describe('delete & undo', () => {
 
     vi.advanceTimersByTime(5001);
     expect(useLinkStore.getState().deletedLink).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('clears a deleted batch after the undo window expires', () => {
+    vi.useFakeTimers();
+    const links = [linkAt('https://a.com'), linkAt('https://b.com')];
+    useLinkStore.setState({ links });
+
+    useLinkStore.getState().softDeleteMany(['id-https://a.com', 'id-https://b.com']);
+    expect(useLinkStore.getState().deletedLinks).toHaveLength(2);
+
+    vi.advanceTimersByTime(5001);
+    expect(useLinkStore.getState().deletedLinks).toEqual([]);
     vi.useRealTimers();
   });
 });
@@ -210,6 +250,7 @@ describe('updates', () => {
     });
     useLinkStore.getState().batchDelete(['id-https://a.com', 'id-https://c.com']);
     expect(useLinkStore.getState().links.map((l) => l.url)).toEqual(['https://b.com']);
+    useLinkStore.getState().undoDelete();
   });
 
   it('batchUpdateCategory only touches targeted links', () => {

@@ -64,6 +64,8 @@ export const STORAGE_KEYS = {
   QUOTA_DAILY_CHECK: '@dead_link_saver:quota:daily_check',
   QUOTA_WEEKLY_BACKUP: '@dead_link_saver:quota:weekly_backup',
   REWARDED_BONUS: '@dead_link_saver:rewarded_bonus',
+  PRO_TRIAL: '@dead_link_saver:pro_trial',
+  COLLECTION_SLOT: '@dead_link_saver:collection_slot',
   THEME: '@dead_link_saver:theme',
   LOCALE: '@dead_link_saver:locale',
 };
@@ -94,6 +96,8 @@ export const MONETIZATION = {
   FREE_WEEKLY_BACKUP_LIMIT: 1,
   FREE_COLLECTION_LIMIT: 3,
   MAX_REWARDED_PER_DAY: 3,
+  PRO_TRIAL_HOURS: 1,
+  COLLECTION_SLOT_DAYS: 7,
   ENTITLEMENT_ID: 'pro',
   ADMOB_REWARDED_ID_ANDROID: 'ca-app-pub-3940256099942544/5224354917',
   ADMOB_REWARDED_ID_IOS: 'ca-app-pub-3940256099942544/1712485313',

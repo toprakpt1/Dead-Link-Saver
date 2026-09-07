@@ -1,6 +1,7 @@
 {
   "undoToast": {
     "deletedPrefix": "Deleted:",
+    "deletedMany": "{{count}} links deleted",
     "link": "link",
     "undo": "Undo"
   },
@@ -88,7 +89,7 @@
       "Rewarded ad buttons disappear completely"
     ],
     "proCta": "View Pro",
-    "proActiveNote": "All limits removed. Backup as often as you want.",
+    "trialActive": "Pro trial active — {{minutes}} min left",
     "restore": "Restore purchase",
     "restoreSuccessTitle": "Restored",
     "restoreSuccessBody": "Your Pro access has been restored.",
@@ -152,6 +153,9 @@
     "featureAdFreeTitle": "Completely ad-free",
     "featureAdFreeDesc": "Rewarded ad buttons disappear entirely",
     "buy": "Start Pro",
+    "tryTrial": "Try Pro free for 1 hour (1 ad)",
+    "trialActiveTitle": "Pro trial active!",
+    "trialActiveBody": "Unlimited scans, backups and collections for 1 hour.",
     "priceNote": "In test mode active with one tap. Real payment via RevenueCat.",
     "restore": "Restore purchase",
     "later": "Continue for now",
@@ -167,14 +171,20 @@
   "rewarded": {
     "titleCheck": "Daily scan limit reached",
     "titleBackup": "Weekly backup limit reached",
+    "titleTrial": "Try Pro free for 1 hour",
+    "titleSlot": "Need one more collection?",
     "descCheck": "Watch a rewarded ad for +1 scan, or go Pro for unlimited.",
     "descBackup": "Watch an ad for +1 backup, or go Pro for unlimited backups.",
+    "descTrial": "Watch 1 ad and unlock everything — scans, backups, collections — for 1 hour.",
+    "descSlot": "Watch 1 ad and get +1 collection slot for 7 days, or go Pro for unlimited.",
     "quota": "Rewarded remaining today: {{remaining}}/3",
     "watch": "Watch ad +1 allowance",
     "limitReached": "Daily limit reached",
     "goPro": "Get Pro — unlimited & ad-free",
     "waitCheck": "Try again tomorrow",
     "waitBackup": "Cancel",
+    "waitTrial": "Maybe later",
+    "waitSlot": "Cancel",
     "footnote": "If ad fails to load, allowance is granted automatically — we won't keep you waiting."
   },
   "linkInput": {
@@ -192,6 +202,12 @@
     "multipleFound_one": "{{count}} link found in the text. Save them all?",
     "multipleFound_other": "{{count}} links found in the text. Save them all?",
     "saveAll": "Save all",
+    "importFile": "Import from .txt / .csv",
+    "importEmpty": "No links found in this file",
+    "importReadFail": "Could not read this file",
+    "importNoNew": "All links in this file are already saved",
+    "importConfirmTitle": "Import links?",
+    "importConfirm": "{{count}} new links found ({{skipped}} already saved). Import them?",
     "batchAdded_one": "{{count}} link added",
     "batchAdded_other": "{{count}} links added",
     "batchSkipped_one": "{{count}} skipped (already saved)",
@@ -305,7 +321,8 @@
     "title": "Collections",
     "desc": "Group links into your own lists — thesis, watchlist, references.",
     "newPlaceholder": "New collection name",
-    "freeLimit": "{{used}}/{{limit}} collections used on the free plan"
+    "freeLimit": "{{used}}/{{limit}} collections used on the free plan",
+    "slotActive": "Bonus slot active — {{days}} days left"
   },
   "health": {
     "title": "Health History",
