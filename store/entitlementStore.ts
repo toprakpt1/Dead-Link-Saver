@@ -57,6 +57,7 @@ interface EntitlementState {
   setPro: (value: boolean) => Promise<void>;
   canCheckDeadLinks: () => boolean;
   canBackup: () => boolean;
+  canCreateCollection: (currentCount: number) => boolean;
   getRemainingChecks: () => number;
   getRemainingBackups: () => number;
   getRewardedRemaining: () => number;
@@ -213,6 +214,11 @@ export const useEntitlementStore = create<EntitlementState>((set, get) => ({
     const week = weekStr();
     const used = state.weeklyBackup?.week === week ? state.weeklyBackup.count : 0;
     return used < MONETIZATION.FREE_WEEKLY_BACKUP_LIMIT;
+  },
+
+  canCreateCollection: (currentCount: number) => {
+    if (get().isPro) return true;
+    return currentCount < MONETIZATION.FREE_COLLECTION_LIMIT;
   },
 
   getRemainingChecks: () => {

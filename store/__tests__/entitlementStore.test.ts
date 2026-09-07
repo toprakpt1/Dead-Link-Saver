@@ -152,3 +152,18 @@ describe('purchasing', () => {
     await expect(useEntitlementStore.getState().restorePurchases()).resolves.toBe(true);
   });
 });
+
+describe('canCreateCollection', () => {
+  it('allows up to the free limit for free users', () => {
+    const { canCreateCollection } = useEntitlementStore.getState();
+    expect(canCreateCollection(0)).toBe(true);
+    expect(canCreateCollection(MONETIZATION.FREE_COLLECTION_LIMIT - 1)).toBe(true);
+    expect(canCreateCollection(MONETIZATION.FREE_COLLECTION_LIMIT)).toBe(false);
+    expect(canCreateCollection(MONETIZATION.FREE_COLLECTION_LIMIT + 5)).toBe(false);
+  });
+
+  it('allows unlimited collections for pro users', () => {
+    useEntitlementStore.setState({ isPro: true });
+    expect(useEntitlementStore.getState().canCreateCollection(99)).toBe(true);
+  });
+});

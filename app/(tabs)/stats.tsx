@@ -7,7 +7,9 @@ import { useCategoryStore } from '@/store/categoryStore';
 import { useThemeStore } from '@/store/themeStore';
 import { COLORS } from '@/utils/constants';
 import { PLATFORM_ICONS, PLATFORM_LABELS, PLATFORM_COLORS } from '@/utils/platforms';
-import type { LinkPlatform } from '@/store/types';
+import type { LinkPlatform, SavedLink } from '@/store/types';
+import { formatDistanceToNow } from 'date-fns';
+import { tr as trLocale, enUS } from 'date-fns/locale';
 
 const ALL_PLATFORMS: LinkPlatform[] = [
   'youtube', 'reddit', 'twitter', 'github', 'instagram', 'medium',
@@ -15,7 +17,7 @@ const ALL_PLATFORMS: LinkPlatform[] = [
 ];
 
 export default function StatsScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const links = useLinkStore((s) => s.links);
   const loadLinks = useLinkStore((s) => s.loadLinks);
   const categories = useCategoryStore((s) => s.categories);
@@ -48,6 +50,17 @@ export default function StatsScreen() {
     acc[l.category] = (acc[l.category] ?? 0) + 1;
     return acc;
   }, {});
+
+  const dateLocale = i18n.language === 'tr' ? trLocale : enUS;
+  const totalChecks = links.reduce((n, l) => n + (l.checks?.length ?? 0), 0);
+  const healthRows = links
+    .map((link) => {
+      const firstDead = link.checks?.find((ch) => ch.status === 'dead');
+      return firstDead ? { link, diedAt: firstDead.checkedAt } : null;
+    })
+    .filter((r): r is { link: SavedLink; diedAt: number } => r !== null)
+    .sort((a, b) => b.diedAt - a.diedAt)
+    .slice(0, 5);
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
@@ -114,6 +127,24 @@ export default function StatsScreen() {
               <View style={[styles.fill, { backgroundColor: c.error, width: `${deadRate}%` }]} />
             </View>
           </View>
+
+          {healthRows.length > 0 && (
+            <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <Text style={[styles.cardTitle, { color: c.text }]}>{t('health.title')}</Text>
+              <Text style={[styles.healthSub, { color: c.textMuted }]}>{t('health.subtitle', { count: totalChecks })}</Text>
+              {healthRows.map(({ link, diedAt }) => (
+                <View key={link.id} style={styles.healthRow}>
+                  <Unlink size={14} color={c.error} />
+                  <Text style={[styles.healthTitle, { color: c.text }]} numberOfLines={1}>
+                    {link.metadata.title || link.url}
+                  </Text>
+                  <Text style={[styles.healthAgo, { color: c.textMuted }]}>
+                    {t('health.diedAgo', { ago: formatDistanceToNow(diedAt, { addSuffix: true, locale: dateLocale }) })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {platformRows.length > 0 && (
             <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
@@ -193,6 +224,10 @@ const styles = StyleSheet.create({
   tileLabel: { fontSize: 12 },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
   cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 6 },
+  healthSub: { fontSize: 12, marginBottom: 4 },
+  healthRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  healthTitle: { flex: 1, fontSize: 13, fontWeight: '500' },
+  healthAgo: { fontSize: 11 },
   rateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   rateLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rateLabel: { fontSize: 13, fontWeight: '500' },

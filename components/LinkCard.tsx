@@ -8,8 +8,10 @@ import {
   StyleSheet,
   Linking,
   Alert,
+  Animated,
+  PanResponder,
 } from 'react-native';
-import { Star, Trash2, Unlink, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare, BookOpenText } from 'lucide-react-native';
+import { Star, Trash2, Unlink, Eye, BookmarkPlus, CheckCircle2, Square, CheckSquare, BookOpenText, Bell } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { SavedLink, LinkStatus, CardSize } from '@/store/types';
@@ -17,10 +19,12 @@ import { COLORS } from '@/utils/constants';
 import { CategoryBadge } from './CategoryBadge';
 import { CategoryPicker } from './CategoryPicker';
 import { useLinkStore } from '@/store/linkStore';
+import { resolveSnoozeAt } from '@/services/snooze';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTutorialStore } from '@/store/tutorialStore';
 import { useThemeStore } from '@/store/themeStore';
 import { hapticDelete, hapticFavorite } from '@/utils/haptics';
+import { resolveSwipeAction, clampSwipe, SWIPE_THRESHOLD } from '@/utils/swipe';
 import { PLATFORM_ICONS, PLATFORM_LABELS } from '@/utils/platforms';
 
 const STATUS_ICONS: Record<LinkStatus, typeof Eye> = {
@@ -69,7 +73,7 @@ interface LinkCardProps {
 export function LinkCard({ link, selectionMode = false, isSelected = false, onToggleSelect }: LinkCardProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { softDelete, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory } = useLinkStore();
+  const { softDelete, toggleFavorite, markAsOpened, updateStatus, updateLinkCategory, snoozeLink, clearReminder } = useLinkStore();
   const cardSize = useSettingsStore((s) => s.cardSize);
   const tutorialStage = useTutorialStore((s) => s.stage);
   const tutorialSampleLinkId = useTutorialStore((s) => s.sampleLinkId);
@@ -136,15 +140,65 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
     updateStatus(link.id, next);
   };
 
+  const handleSnooze = () => {
+    if (link.remindAt) {
+      Alert.alert(t('snooze.cancelTitle'), t('snooze.cancelBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('snooze.cancelReminder'), style: 'destructive', onPress: () => void clearReminder(link.id) },
+      ]);
+      return;
+    }
+    Alert.alert(t('snooze.title'), t('snooze.pickWhen'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('snooze.tomorrow'), onPress: () => void snoozeLink(link.id, resolveSnoozeAt('tomorrow')) },
+      { text: t('snooze.in3days'), onPress: () => void snoozeLink(link.id, resolveSnoozeAt('days3')) },
+      { text: t('snooze.nextWeek'), onPress: () => void snoozeLink(link.id, resolveSnoozeAt('week')) },
+    ]);
+  };
+
+  const translateX = useRef(new Animated.Value(0)).current;
+  const favOpacity = translateX.interpolate({ inputRange: [0, SWIPE_THRESHOLD], outputRange: [0.3, 1], extrapolate: 'clamp' });
+  const delOpacity = translateX.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [1, 0.3], extrapolate: 'clamp' });
+  // Created per render (not in a ref) so the gesture always sees the current
+  // selectionMode/link — setValue dragging doesn't re-render mid-swipe.
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, g) =>
+      !selectionMode && Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
+    onPanResponderMove: (_, g) => translateX.setValue(clampSwipe(g.dx)),
+    onPanResponderRelease: (_, g) => {
+      const action = resolveSwipeAction(g.dx);
+      if (action === 'favorite') {
+        hapticFavorite();
+        toggleFavorite(link.id);
+      } else if (action === 'delete') {
+        handleDelete();
+      }
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+    },
+  });
+
   return (
-    <TouchableOpacity
-      style={[
-        { padding: s.cardPadding, marginVertical: s.cardMarginV, backgroundColor: c.surface, borderRadius: 8, marginHorizontal: 12, borderWidth: 1, borderColor: c.border },
-        isSelected && { borderColor: c.primary, backgroundColor: c.primaryMuted },
-      ]}
-      onPress={handlePress}
-      activeOpacity={0.7}
-    >
+    <View style={{ marginVertical: s.cardMarginV, marginHorizontal: 12 }}>
+      <View style={[styles.swipeUnderlay, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <Animated.View style={[styles.swipeIcon, { opacity: favOpacity }]}>
+          <Star size={20} color={c.warning} fill={link.isFavorite ? c.warning : 'none'} />
+        </Animated.View>
+        <Animated.View style={[styles.swipeIcon, { opacity: delOpacity }]}>
+          <Trash2 size={20} color={c.error} />
+        </Animated.View>
+      </View>
+      <Animated.View {...panResponder.panHandlers} style={{ transform: [{ translateX }] }}>
+        <TouchableOpacity
+          style={[
+            { padding: s.cardPadding, backgroundColor: c.surface, borderRadius: 8, borderWidth: 1, borderColor: c.border },
+            isSelected && { borderColor: c.primary, backgroundColor: c.primaryMuted },
+          ]}
+          onPress={handlePress}
+          activeOpacity={0.7}
+        >
       <View style={[styles.header, { gap: s.headerGap, marginBottom: s.headerMb }]}>
         {selectionMode && (
           <Pressable onPress={(e) => { e.stopPropagation(); onToggleSelect?.(link.id); }} hitSlop={8}>
@@ -228,6 +282,9 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
                 <BookOpenText size={s.iconSize} color={link.snapshot ? c.primary : c.textMuted} />
               </Pressable>
             )}
+            <Pressable onPress={(e) => { e.stopPropagation(); handleSnooze(); }} style={{ padding: s.actionPad }}>
+              <Bell size={s.iconSize} color={link.remindAt ? c.primary : c.textMuted} fill={link.remindAt ? c.primary : 'none'} />
+            </Pressable>
             <Pressable onPress={(e) => { e.stopPropagation(); handleDelete(); }} style={{ padding: s.actionPad }}>
               <Trash2 size={s.iconSize} color={c.textMuted} />
             </Pressable>
@@ -246,7 +303,9 @@ export function LinkCard({ link, selectionMode = false, isSelected = false, onTo
         }}
         onClose={closePicker}
       />
-    </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -262,4 +321,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row' },
   deadBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 6 },
   deadText: { fontWeight: '500' },
+  swipeUnderlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 8, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18 },
+  swipeIcon: {},
 });

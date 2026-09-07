@@ -9,7 +9,7 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 interface PaywallSheetProps {
   visible: boolean;
   onClose: () => void;
-  feature?: 'check' | 'backup' | 'general';
+  feature?: 'check' | 'backup' | 'collections' | 'general';
 }
 
 export function PaywallSheet({ visible, onClose, feature = 'general' }: PaywallSheetProps) {
@@ -20,7 +20,7 @@ export function PaywallSheet({ visible, onClose, feature = 'general' }: PaywallS
   const isDark = useThemeStore((s) => s.theme.isDark);
   const c = COLORS;
 
-  const headline = feature === 'check' ? t('paywall.headlineCheck') : feature === 'backup' ? t('paywall.headlineBackup') : t('paywall.headlineGeneral');
+  const headline = feature === 'check' ? t('paywall.headlineCheck') : feature === 'backup' ? t('paywall.headlineBackup') : feature === 'collections' ? t('paywall.headlineCollections') : t('paywall.headlineGeneral');
 
   const handlePurchase = async () => {
     setLoading(true);

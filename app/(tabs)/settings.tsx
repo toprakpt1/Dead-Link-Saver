@@ -7,17 +7,19 @@ import { useTranslation } from 'react-i18next';
 import type { CardSize } from '@/store/types';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useCollectionStore } from '@/store/collectionStore';
 import { useLinkStore } from '@/store/linkStore';
 import { useTutorialStore } from '@/store/tutorialStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useThemeStore } from '@/store/themeStore';
 import { themes, type ThemeId } from '@/theme/themes';
-import { STORAGE_KEYS } from '@/utils/constants';
+import { STORAGE_KEYS, MONETIZATION } from '@/utils/constants';
 import { changeLocale, type AppLocale } from '@/utils/i18n';
 import { hapticDelete } from '@/utils/haptics';
 import { BackupSection } from '@/components/BackupSection';
 import { RewardedGate } from '@/components/RewardedGate';
 import { PaywallSheet } from '@/components/PaywallSheet';
+import { DebugPanel } from '@/components/DebugPanel';
 
 const SIZES: { key: CardSize; label: string; icon: typeof Columns2 }[] = [
   { key: 'small', label: 'Small', icon: Columns3 },
@@ -36,6 +38,8 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const { cardSize, setCardSize, loadSettings, loaded } = useSettingsStore();
   const { categories, loadCategories, addCategory, removeCategory } = useCategoryStore();
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const { collections, loadCollections, addCollection, removeCollection } = useCollectionStore();
   const [newName, setNewName] = useState('');
   const isPro = useEntitlementStore((s) => s.isPro);
   const initEntitlement = useEntitlementStore((s) => s.init);
@@ -44,11 +48,12 @@ export default function SettingsScreen() {
   const c = theme.colors;
   const [gateVisible, setGateVisible] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState<'backup' | 'collections'>('backup');
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
-    if (!loaded) loadSettings();
     loadCategories();
+    loadCollections();
     void initEntitlement();
   }, []);
 
@@ -57,6 +62,17 @@ export default function SettingsScreen() {
     if (!name) return;
     addCategory(name);
     setNewName('');
+  };
+
+  const handleAddCollection = () => {
+    if (!newCollectionName.trim()) return;
+    if (!useEntitlementStore.getState().canCreateCollection(collections.length)) {
+      setPaywallFeature('collections');
+      setPaywallVisible(true);
+      return;
+    }
+    addCollection(newCollectionName);
+    setNewCollectionName('');
   };
 
   const handleRemove = (id: string, name: string) => {
@@ -173,7 +189,7 @@ export default function SettingsScreen() {
         </Pressable>
       )}
 
-      <BackupSection onNeedGate={() => setGateVisible(true)} onNeedPro={() => setPaywallVisible(true)} />
+      <BackupSection onNeedGate={() => setGateVisible(true)} onNeedPro={() => { setPaywallFeature('backup'); setPaywallVisible(true); }} />
 
       <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border }]}>
         <View style={styles.sectionHeader}>
@@ -276,6 +292,40 @@ export default function SettingsScreen() {
       </View>
 
       <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <Text style={[styles.sectionTitle, { color: c.text }]}>{t('collections.title')}</Text>
+        <Text style={[styles.sectionSub, { color: c.textMuted }]}>{t('collections.desc')}</Text>
+        {!isPro && (
+          <Text style={[styles.sectionSub, { color: c.textMuted }]}>
+            {t('collections.freeLimit', { used: collections.length, limit: MONETIZATION.FREE_COLLECTION_LIMIT })}
+          </Text>
+        )}
+        <View style={styles.addRow}>
+          <TextInput
+            style={[styles.addInput, { backgroundColor: c.background, borderColor: c.border, color: c.text }]}
+            placeholder={t('collections.newPlaceholder')}
+            placeholderTextColor={c.textMuted}
+            value={newCollectionName}
+            onChangeText={setNewCollectionName}
+            onSubmitEditing={handleAddCollection}
+          />
+          <Pressable style={[styles.addButton, { backgroundColor: c.primary }]} onPress={handleAddCollection}>
+            <Plus size={18} color={c.onPrimary} />
+          </Pressable>
+        </View>
+        <View style={styles.categoryList}>
+          {collections.map((col) => (
+            <View key={col.id} style={[styles.categoryRow, { backgroundColor: c.background, borderColor: c.border }]}>
+              <View style={[styles.categoryDot, { backgroundColor: c.primary }]} />
+              <Text style={[styles.categoryName, { color: c.text }]}>{col.name} ({col.linkIds.length})</Text>
+              <Pressable onPress={() => removeCollection(col.id)} style={styles.deleteButton}>
+                <Trash2 size={16} color={c.textMuted} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>{t('settings.tutorial')}</Text>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>{t('settings.tutorialDesc')}</Text>
         <Pressable style={[styles.replayButton, { borderColor: c.primary }]} onPress={handleReplayTutorial}>
@@ -284,6 +334,8 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
+      {__DEV__ && <DebugPanel />}
+
       <RewardedGate
         visible={gateVisible}
         type="backup"
@@ -291,10 +343,11 @@ export default function SettingsScreen() {
         onRewarded={() => setGateVisible(false)}
         onGoPro={() => {
           setGateVisible(false);
+          setPaywallFeature('backup');
           setPaywallVisible(true);
         }}
       />
-      <PaywallSheet visible={paywallVisible} onClose={() => setPaywallVisible(false)} feature="backup" />
+      <PaywallSheet visible={paywallVisible} onClose={() => setPaywallVisible(false)} feature={paywallFeature} />
     </ScrollView>
   );
 }

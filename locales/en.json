@@ -161,7 +161,8 @@
     "restoredTitle": "Restored",
     "restoredBody": "Your Pro access has been restored.",
     "notFoundTitle": "No subscription found",
-    "notFoundBody": "No active Pro subscription found."
+    "notFoundBody": "No active Pro subscription found.",
+    "headlineCollections": "Unlimited collections"
   },
   "rewarded": {
     "titleCheck": "Daily scan limit reached",
@@ -263,5 +264,55 @@
   },
   "alerts": {
     "ok": "OK"
+  },
+  "snooze": {
+    "title": "Remind me later",
+    "pickWhen": "When should I remind you?",
+    "tomorrow": "Tomorrow",
+    "in3days": "In 3 days",
+    "nextWeek": "Next week",
+    "cancelTitle": "Reminder set",
+    "cancelBody": "Cancel the reminder for this link?",
+    "cancelReminder": "Cancel reminder",
+    "body": "The link you saved for later is waiting"
+  },
+  "notify": {
+    "deadTitle": "Your links died",
+    "deadBody_one": "{{count}} of your links died — check the archive",
+    "deadBody_other": "{{count}} of your links died — check the archive"
+  },
+  "debug": {
+    "title": "Debug Panel",
+    "desc": "Developer tests — dev mode only.",
+    "perm": "Notification permission",
+    "bg": "Background scan",
+    "scheduled": "Scheduled",
+    "runScan": "Run scan now",
+    "testDead": "Test dead notification",
+    "testSnooze": "Snooze test (10s)",
+    "cancelAll": "Cancel scheduled",
+    "refresh": "Refresh status",
+    "yes": "on",
+    "no": "off",
+    "scanDoneTitle": "Scan finished",
+    "scanDoneBody": "Checked {{checked}}, found {{dead}} dead.",
+    "noLinksTitle": "No links",
+    "noLinksBody": "Save a link first.",
+    "snoozeTestTitle": "Scheduled",
+    "snoozeTestBody": "Notification arrives in 10 seconds."
+  },
+  "collections": {
+    "title": "Collections",
+    "desc": "Group links into your own lists — thesis, watchlist, references.",
+    "newPlaceholder": "New collection name",
+    "freeLimit": "{{used}}/{{limit}} collections used on the free plan"
+  },
+  "health": {
+    "title": "Health History",
+    "subtitle": "{{count}} recorded checks",
+    "diedAgo": "died {{ago}}",
+    "alive": "Alive",
+    "dead": "Dead",
+    "error": "Error"
   }
 }

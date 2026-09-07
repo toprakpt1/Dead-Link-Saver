@@ -31,6 +31,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
+      "./plugins/dead-link-widget",
       [
         "expo-build-properties",
         {

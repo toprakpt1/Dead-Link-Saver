@@ -161,7 +161,8 @@
     "restoredTitle": "Geri yüklendi",
     "restoredBody": "Pro erişimin geri yüklendi.",
     "notFoundTitle": "Abonelik bulunamadı",
-    "notFoundBody": "Aktif Pro aboneliği bulunamadı."
+    "notFoundBody": "Aktif Pro aboneliği bulunamadı.",
+    "headlineCollections": "Sınırsız koleksiyon"
   },
   "rewarded": {
     "titleCheck": "Günlük tarama hakkın doldu",
@@ -263,5 +264,55 @@
   },
   "alerts": {
     "ok": "Tamam"
+  },
+  "snooze": {
+    "title": "Sonra hatırlat",
+    "pickWhen": "Ne zaman hatırlatayım?",
+    "tomorrow": "Yarın hatırlat",
+    "in3days": "3 gün sonra",
+    "nextWeek": "Haftaya",
+    "cancelTitle": "Hatırlatma kurulu",
+    "cancelBody": "Bu link için hatırlatmayı iptal edeyim mi?",
+    "cancelReminder": "Hatırlatmayı iptal et",
+    "body": "Okumak için bıraktığın link seni bekliyor"
+  },
+  "notify": {
+    "deadTitle": "Linklerin öldü",
+    "deadBody_one": "{{count}} linkin öldü, arşive bak",
+    "deadBody_other": "{{count}} linkin öldü, arşive bak"
+  },
+  "debug": {
+    "title": "Debug Paneli",
+    "desc": "Geliştirici testleri — sadece dev modda görünür.",
+    "perm": "Bildirim izni",
+    "bg": "Arka plan tarama",
+    "scheduled": "Zamanlanmış",
+    "runScan": "Taramayı şimdi çalıştır",
+    "testDead": "Ölü bildirimini test et",
+    "testSnooze": "Snooze testi (10 sn)",
+    "cancelAll": "Zamanlanmışları iptal et",
+    "refresh": "Durumu yenile",
+    "yes": "açık",
+    "no": "kapalı",
+    "scanDoneTitle": "Tarama bitti",
+    "scanDoneBody": "{{checked}} link tarandı, {{dead}} ölü bulundu.",
+    "noLinksTitle": "Link yok",
+    "noLinksBody": "Önce bir link kaydet.",
+    "snoozeTestTitle": "Kuruldu",
+    "snoozeTestBody": "10 saniye sonra bildirim gelecek."
+  },
+  "collections": {
+    "title": "Koleksiyonlar",
+    "desc": "Linkleri kendi listelerinde topla — tez, izlenecekler, referans.",
+    "newPlaceholder": "Yeni koleksiyon adı",
+    "freeLimit": "Ücretsiz planda {{used}}/{{limit}} koleksiyon kullanıldı"
+  },
+  "health": {
+    "title": "Sağlık Geçmişi",
+    "subtitle": "{{count}} tarama kaydı",
+    "diedAgo": "{{ago}} öldü",
+    "alive": "Canlı",
+    "dead": "Ölü",
+    "error": "Hata"
   }
 }

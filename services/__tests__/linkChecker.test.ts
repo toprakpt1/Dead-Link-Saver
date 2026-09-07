@@ -1,5 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { checkLinkStatus, checkMultipleLinks } from '@/services/linkChecker';
+import { checkLinkStatus, checkMultipleLinks, appendCheck, MAX_LINK_CHECKS } from '@/services/linkChecker';
+import type { SavedLink } from '@/store/types';
 
 function headResponse(status: number) {
   return { ok: status >= 200 && status < 300, status };
@@ -23,7 +24,7 @@ afterEach(() => {
 describe('checkLinkStatus', () => {
   it('marks 2xx responses as alive', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(headResponse(200)));
-    await expect(checkLinkStatus('https://example.com/ok')).resolves.toEqual({ isDead: false });
+    await expect(checkLinkStatus('https://example.com/ok')).resolves.toEqual({ isDead: false, statusCode: 200 });
   });
 
   it('marks 404 as dead and fetches an archive url', async () => {
@@ -35,6 +36,7 @@ describe('checkLinkStatus', () => {
     await expect(checkLinkStatus('https://example.com/gone')).resolves.toEqual({
       isDead: true,
       archiveUrl: 'https://web.archive.org/web/20240101/https://example.com/gone',
+      statusCode: 404,
     });
   });
 
@@ -53,6 +55,7 @@ describe('checkLinkStatus', () => {
     await expect(checkLinkStatus('https://example.com/gone')).resolves.toEqual({
       isDead: true,
       archiveUrl: 'https://web.archive.org/web/*/https://example.com/gone',
+      statusCode: 404,
     });
   });
 
@@ -106,10 +109,32 @@ describe('checkMultipleLinks', () => {
       'https://example.com/gone',
     ]);
 
-    expect(results.get('https://example.com/alive')).toEqual({ isDead: false });
+    expect(results.get('https://example.com/alive')).toEqual({ isDead: false, statusCode: 200 });
     expect(results.get('https://example.com/gone')).toEqual({
       isDead: true,
       archiveUrl: 'https://web.archive.org/web/20240101/https://example.com/gone',
+      statusCode: 404,
     });
+  });
+});
+
+describe('appendCheck', () => {
+  const base: SavedLink = {
+    id: 'x', url: 'https://x.com', platform: 'unknown', category: 'random', status: 'unread',
+    metadata: { title: 'x' }, isDead: false, isFavorite: false, createdAt: 1, openCount: 0,
+  };
+
+  it('appends entries and caps history at the limit', () => {
+    let link = { ...base };
+    for (let i = 0; i < MAX_LINK_CHECKS + 5; i++) {
+      link = appendCheck(link, 'alive', 200, i);
+    }
+    expect(link.checks).toHaveLength(MAX_LINK_CHECKS);
+    expect(link.checks?.[0]).toEqual({ checkedAt: 5, status: 'alive', statusCode: 200 });
+  });
+
+  it('omits statusCode when the check never got a response', () => {
+    const next = appendCheck({ ...base }, 'error');
+    expect(next.checks).toEqual([{ checkedAt: expect.any(Number), status: 'error' }]);
   });
 });

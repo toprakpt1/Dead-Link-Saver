@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { BookOpenText, FileText, ExternalLink, Unlink, Download } from 'lucide-react-native';
@@ -8,6 +8,9 @@ import { useThemeStore } from '@/store/themeStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { PLATFORM_LABELS } from '@/utils/platforms';
 import { COLORS } from '@/utils/constants';
+import { formatDistanceToNow } from 'date-fns';
+import { tr as trLocale, enUS } from 'date-fns/locale';
+import { useCollectionStore } from '@/store/collectionStore';
 
 function formatDate(timestamp: number): string {
   try {
@@ -20,8 +23,14 @@ function formatDate(timestamp: number): string {
 export default function LinkReaderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const link = useLinkStore((s) => s.links.find((l) => l.id === id));
+  const { collections, loadCollections, toggleLinkInCollection } = useCollectionStore();
+  const dateLocale = i18n.language === 'tr' ? trLocale : enUS;
+
+  useEffect(() => {
+    loadCollections();
+  }, [loadCollections]);
   const { isConnected } = useNetworkStatus();
   useThemeStore((s) => s.themeId);
   const c = COLORS;
@@ -67,6 +76,25 @@ export default function LinkReaderScreen() {
           {platformLabel} · {link.url}
         </Text>
 
+        {collections.length > 0 && (
+          <View style={[styles.copyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Text style={[styles.copyHeaderText, { color: c.text }]}>{t('collections.title')}</Text>
+            {collections.map((col) => {
+              const inCol = col.linkIds.includes(link.id);
+              return (
+                <Pressable
+                  key={col.id}
+                  onPress={() => toggleLinkInCollection(col.id, link.id)}
+                  style={[styles.collectionRow, { borderColor: c.border }, inCol && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+                >
+                  <Text style={[styles.collectionName, { color: inCol ? c.primary : c.text }]}>{col.name}</Text>
+                  <Text style={[styles.collectionCheck, { color: inCol ? c.primary : c.textMuted }]}>{inCol ? '✓' : '+'}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
         {link.snapshot ? (
           <View style={[styles.copyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
             <View style={[styles.copyHeader, { borderBottomColor: c.border }]}>
@@ -106,6 +134,23 @@ export default function LinkReaderScreen() {
             {!isConnected && (
               <Text style={[styles.offlineHint, { color: c.textMuted }]}>{t('reader.offlineHint')}</Text>
             )}
+          </View>
+        )}
+
+        {(link.checks?.length ?? 0) > 0 && (
+          <View style={[styles.copyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Text style={[styles.copyHeaderText, { color: c.text }]}>{t('health.title')}</Text>
+            {[...link.checks!].slice(-8).reverse().map((check, i) => (
+              <View key={`${check.checkedAt}-${i}`} style={styles.timelineRow}>
+                <View style={[styles.timelineDot, { backgroundColor: check.status === 'dead' ? c.error : check.status === 'alive' ? c.success : c.warning }]} />
+                <Text style={[styles.timelineText, { color: c.text }]}>
+                  {t(`health.${check.status}`)}{check.statusCode ? ` · ${check.statusCode}` : ''}
+                </Text>
+                <Text style={[styles.timelineDate, { color: c.textMuted }]}>
+                  {formatDistanceToNow(check.checkedAt, { addSuffix: true, locale: dateLocale })}
+                </Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -155,6 +200,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   copyHeaderText: { fontSize: 14, fontWeight: '700' },
+  collectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, marginTop: 8 },
+  collectionName: { fontSize: 14, fontWeight: '600' },
+  collectionCheck: { fontSize: 16, fontWeight: '700' },
+  timelineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  timelineDot: { width: 8, height: 8, borderRadius: 4 },
+  timelineText: { fontSize: 13, fontWeight: '600' },
+  timelineDate: { marginLeft: 'auto', fontSize: 11 },
   copyDate: { marginLeft: 'auto', fontSize: 11 },
   copyBody: { padding: 14, fontSize: 15, lineHeight: 24 },
   noCopyIcon: {

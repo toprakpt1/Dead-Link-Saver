@@ -58,6 +58,7 @@ export const STORAGE_KEYS = {
   LINKS: '@dead_link_saver:links',
   SETTINGS: '@dead_link_saver:settings',
   CATEGORIES: '@dead_link_saver:categories',
+  COLLECTIONS: '@dead_link_saver:collections',
   ONBOARDING: '@dead_link_saver:onboarding',
   ENTITLEMENT: '@dead_link_saver:entitlement',
   QUOTA_DAILY_CHECK: '@dead_link_saver:quota:daily_check',
@@ -91,6 +92,7 @@ export const CATEGORY_KEYWORDS = {
 export const MONETIZATION = {
   FREE_DAILY_CHECK_LIMIT: 1,
   FREE_WEEKLY_BACKUP_LIMIT: 1,
+  FREE_COLLECTION_LIMIT: 3,
   MAX_REWARDED_PER_DAY: 3,
   ENTITLEMENT_ID: 'pro',
   ADMOB_REWARDED_ID_ANDROID: 'ca-app-pub-3940256099942544/5224354917',

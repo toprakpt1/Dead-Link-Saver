@@ -41,6 +41,24 @@ export interface SavedLink {
   lastOpenedAt?: number;
   openCount: number;
   snapshot?: LinkSnapshot;
+  checks?: LinkCheck[];
+  remindAt?: number;
+  reminderId?: string;
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  linkIds: string[];
+  createdAt: number;
+}
+
+export type LinkCheckStatus = 'alive' | 'dead' | 'error';
+
+export interface LinkCheck {
+  checkedAt: number;
+  status: LinkCheckStatus;
+  statusCode?: number;
 }
 
 export interface LinkStore {
@@ -63,6 +81,8 @@ export interface LinkStore {
   checkDeadLinks: () => Promise<string[]>;
   getForgottenLinks: () => SavedLink[];
   captureSnapshot: (id: string) => Promise<boolean>;
+  snoozeLink: (id: string, atMs: number) => Promise<void>;
+  clearReminder: (id: string) => Promise<void>;
   loadLinks: () => Promise<void>;
 }
 

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { COLORS } from '@/utils/constants';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useThemeStore } from '@/store/themeStore';
-import { shareBackup, pickAndRestoreBackup } from '@/services/backup';
+import { shareBackup, pickAndRestoreBackup, shareExport, type ExportFormat } from '@/services/backup';
 import { useLinkStore } from '@/store/linkStore';
 
 interface BackupSectionProps {
@@ -24,6 +24,7 @@ export function BackupSection({ onNeedGate, onNeedPro }: BackupSectionProps) {
   const c = COLORS;
 
   const [busy, setBusy] = useState<'export' | 'import' | null>(null);
+  const [format, setFormat] = useState<ExportFormat>('json');
 
   const handleExport = async () => {
     if (!isPro && !canBackupValue) {
@@ -32,7 +33,8 @@ export function BackupSection({ onNeedGate, onNeedPro }: BackupSectionProps) {
     }
     setBusy('export');
     try {
-      await shareBackup();
+      if (format === 'json') await shareBackup();
+      else await shareExport(format);
       if (!isPro) await consumeBackup();
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('backup.errorCreate');
@@ -74,6 +76,20 @@ export function BackupSection({ onNeedGate, onNeedPro }: BackupSectionProps) {
 
       <Text style={[styles.desc, { color: c.textMuted }]}>{t('backup.desc')}</Text>
 
+      <View style={styles.formatRow}>
+        {(['json', 'markdown', 'csv', 'html'] as ExportFormat[]).map((f) => (
+          <Pressable
+            key={f}
+            onPress={() => setFormat(f)}
+            style={[styles.formatChip, { borderColor: c.border }, format === f && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+          >
+            <Text style={[styles.formatChipText, { color: c.textMuted }, format === f && { color: c.primary }]}>
+              {f === 'json' ? 'JSON' : f === 'markdown' ? 'MD' : f.toUpperCase()}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <View style={styles.row}>
         <Pressable onPress={handleExport} disabled={busy !== null} style={[styles.btn, { backgroundColor: c.primary }]}>
           {busy === 'export' ? <ActivityIndicator color="#fff" size="small" /> : <Upload size={16} color="#fff" />}
@@ -105,6 +121,9 @@ const styles = StyleSheet.create({
   quotaText: { fontSize: 12 },
   desc: { fontSize: 13, lineHeight: 18 },
   row: { flexDirection: 'row', gap: 10 },
+  formatRow: { flexDirection: 'row', gap: 8 },
+  formatChip: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  formatChipText: { fontSize: 12, fontWeight: '700' },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10 },
   primaryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   secondaryText: { fontWeight: '700', fontSize: 13 },

@@ -12,6 +12,7 @@ vi.mock('@/services/snapshot', () => ({
 
 vi.mock('@/services/linkChecker', () => ({
   checkMultipleLinks: vi.fn(async () => new Map()),
+  appendCheck: vi.fn((link: SavedLink) => link),
 }));
 
 vi.mock('@/services/wayback', () => ({
@@ -25,6 +26,15 @@ const storageMock = vi.hoisted(() => ({
 }));
 
 vi.mock('@/utils/storage', () => ({ storage: storageMock }));
+
+const notificationsMock = vi.hoisted(() => ({
+  scheduleSnoozeNotification: vi.fn(async (_id: string, _t: string, _b: string, _at: number) => 'notif-1'),
+  cancelScheduledNotification: vi.fn(async (_id: string) => {}),
+}));
+
+vi.mock('@/services/notifications', () => notificationsMock);
+
+vi.mock('@/utils/i18n', () => ({ default: { t: (key: string) => key } }));
 
 import { useLinkStore } from '@/store/linkStore';
 import { fetchMetadata, fetchYouTubeMetadata } from '@/services/metadataFetcher';
@@ -317,5 +327,52 @@ describe('loadLinks', () => {
     await useLinkStore.getState().loadLinks();
     expect(useLinkStore.getState().links).toHaveLength(1);
     expect(useLinkStore.getState().isLoading).toBe(false);
+  });
+});
+
+describe('snoozeLink / clearReminder', () => {
+  it('sets remindAt and schedules a notification', async () => {
+    useLinkStore.setState({ links: [linkAt('https://snooze.example.com')] });
+    const at = Date.now() + 60_000;
+    await useLinkStore.getState().snoozeLink('id-https://snooze.example.com', at);
+    const link = useLinkStore.getState().links[0];
+    expect(link.remindAt).toBe(at);
+    expect(link.reminderId).toBe('notif-1');
+    expect(notificationsMock.scheduleSnoozeNotification).toHaveBeenCalledWith(
+      'id-https://snooze.example.com',
+      expect.any(String),
+      expect.any(String),
+      at
+    );
+  });
+
+  it('rescheduling cancels the previous notification first', async () => {
+    useLinkStore.setState({
+      links: [linkAt('https://resched.example.com', { remindAt: 1, reminderId: 'old-notif' })],
+    });
+    await useLinkStore.getState().snoozeLink('id-https://resched.example.com', Date.now() + 60_000);
+    expect(notificationsMock.cancelScheduledNotification).toHaveBeenCalledWith('old-notif');
+  });
+
+  it('clearReminder cancels and clears fields', async () => {
+    useLinkStore.setState({
+      links: [linkAt('https://clear.example.com', { remindAt: 1, reminderId: 'notif-9' })],
+    });
+    await useLinkStore.getState().clearReminder('id-https://clear.example.com');
+    const link = useLinkStore.getState().links[0];
+    expect(link.remindAt).toBeUndefined();
+    expect(link.reminderId).toBeUndefined();
+    expect(notificationsMock.cancelScheduledNotification).toHaveBeenCalledWith('notif-9');
+  });
+
+  it('markAsOpened dismisses a pending reminder', () => {
+    useLinkStore.setState({
+      links: [linkAt('https://open.example.com', { remindAt: 1, reminderId: 'notif-7' })],
+    });
+    useLinkStore.getState().markAsOpened('id-https://open.example.com');
+    const link = useLinkStore.getState().links[0];
+    expect(link.remindAt).toBeUndefined();
+    expect(link.reminderId).toBeUndefined();
+    expect(notificationsMock.cancelScheduledNotification).toHaveBeenCalledWith('notif-7');
   });
 });

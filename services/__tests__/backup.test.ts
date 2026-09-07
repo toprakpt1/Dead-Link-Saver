@@ -52,7 +52,7 @@ vi.mock('react-native', () => rnMock);
 vi.mock('@/utils/storage', () => ({ storage: storageMock }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createBackupFile, pickAndRestoreBackup, shareBackup } from '@/services/backup';
+import { createBackupFile, pickAndRestoreBackup, shareBackup, buildMarkdownExport, buildCsvExport, buildHtmlExport, createExportFile } from '@/services/backup';
 
 function makeLink(url: string, overrides: Partial<SavedLink> = {}): SavedLink {
   return {
@@ -244,5 +244,90 @@ describe('shareBackup', () => {
     expect(sharingMock.shareAsync.mock.calls[0][1]).toMatchObject({
       mimeType: 'application/json',
     });
+  });
+});
+
+describe('export builders', () => {
+  const cats = [{ id: 'news', name: 'News', color: '#000', keywords: [] }];
+
+  it('groups markdown by category with dead/favorite flags', () => {
+    const md = buildMarkdownExport(
+      [
+        makeLink('https://a.com', { category: 'news', metadata: { title: 'A' } }),
+        makeLink('https://b.com', { isDead: true, archiveUrl: 'https://web.archive.org/b', isFavorite: true, metadata: { title: 'B' } }),
+      ],
+      cats
+    );
+    expect(md).toContain('## News (1)');
+    expect(md).toContain('- [A](https://a.com)');
+    expect(md).toContain('- [B](https://b.com) (dead, archive: https://web.archive.org/b, favorite)');
+  });
+
+  it('emits a csv with header and escaped cells', () => {
+    const csv = buildCsvExport([
+      makeLink('https://a.com', { metadata: { title: 'Say "hi", now' }, isDead: true }),
+    ]);
+    const [header, row] = csv.split('\n');
+    expect(header).toBe('title,url,platform,category,status,isDead,archiveUrl,isFavorite,createdAt,openCount');
+    expect(row).toContain('"Say ""hi"", now"');
+    expect(row).toContain('true');
+  });
+
+  it('escapes html and marks dead links', () => {
+    const html = buildHtmlExport(
+      [makeLink('https://a.com', { metadata: { title: '<b>A</b>' }, isDead: true })],
+      cats
+    );
+    expect(html).toContain('&lt;b&gt;A&lt;/b&gt;');
+    expect(html).toContain('class="badge dead"');
+    expect(html).not.toContain('<b>A</b>');
+  });
+
+  it('writes a markdown file with the right extension', async () => {
+    storageMock.loadLinks.mockResolvedValueOnce([makeLink('https://a.com')]);
+    const uri = await createExportFile('markdown');
+    expect(uri).toMatch(/\.md$/);
+    const written = fileSystemMock.writeAsStringAsync.mock.calls[0][1] as string;
+    expect(written).toContain('# Dead Link Saver Export');
+  });
+
+  it('includes collections in the json backup', async () => {
+    storageMock.loadLinks.mockResolvedValueOnce([]);
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.COLLECTIONS,
+      JSON.stringify([{ id: 'c1', name: 'Thesis', linkIds: [], createdAt: 1 }])
+    );
+    await createBackupFile();
+    const written = fileSystemMock.writeAsStringAsync.mock.calls[0][1] as string;
+    expect(JSON.parse(written).collections).toEqual([
+      { id: 'c1', name: 'Thesis', linkIds: [], createdAt: 1 },
+    ]);
+  });
+
+  it('merges collections on restore without duplicating ids', async () => {
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.COLLECTIONS,
+      JSON.stringify([{ id: 'c1', name: 'Thesis', linkIds: [], createdAt: 1 }])
+    );
+    documentPickerMock.getDocumentAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file:///backup.json' }],
+    });
+    fileSystemMock.readAsStringAsync.mockResolvedValueOnce(
+      JSON.stringify({
+        version: 1,
+        exportedAt: 1,
+        links: [],
+        categories: [],
+        collections: [
+          { id: 'c1', name: 'Thesis', linkIds: [], createdAt: 1 },
+          { id: 'c2', name: 'Watchlist', linkIds: [], createdAt: 2 },
+        ],
+      })
+    );
+    await pickAndRestoreBackup();
+    const raw = await asyncStorageMock.getItem(STORAGE_KEYS.COLLECTIONS);
+    const stored = JSON.parse(raw ?? '[]') as Array<{ id: string }>;
+    expect(stored.map((c) => c.id).sort()).toEqual(['c1', 'c2']);
   });
 });

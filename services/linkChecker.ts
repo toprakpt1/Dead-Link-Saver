@@ -1,4 +1,6 @@
-export async function checkLinkStatus(url: string): Promise<{ isDead: boolean; archiveUrl?: string }> {
+import type { SavedLink, LinkCheckStatus } from '@/store/types';
+
+export async function checkLinkStatus(url: string): Promise<{ isDead: boolean; archiveUrl?: string; statusCode?: number }> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -17,10 +19,10 @@ export async function checkLinkStatus(url: string): Promise<{ isDead: boolean; a
 
     if (isDead) {
       const archiveUrl = await getArchiveUrl(url);
-      return { isDead: true, archiveUrl };
+      return { isDead: true, archiveUrl, statusCode: response.status };
     }
 
-    return { isDead: false };
+    return { isDead: false, statusCode: response.status };
   } catch (error) {
     console.error('Link check failed:', error);
     // If check fails, assume link is alive (network issues, CORS, etc.)
@@ -49,8 +51,8 @@ async function getArchiveUrl(url: string): Promise<string | undefined> {
 export async function checkMultipleLinks(
   urls: string[],
   onProgress?: (checked: number, total: number) => void
-): Promise<Map<string, { isDead: boolean; archiveUrl?: string }>> {
-  const results = new Map<string, { isDead: boolean; archiveUrl?: string }>();
+): Promise<Map<string, { isDead: boolean; archiveUrl?: string; statusCode?: number }>> {
+  const results = new Map<string, { isDead: boolean; archiveUrl?: string; statusCode?: number }>();
   
   const batchSize = 5;
   for (let i = 0; i < urls.length; i += batchSize) {
@@ -61,10 +63,25 @@ export async function checkMultipleLinks(
         return { url, ...result };
       })
     );
-    
-    checks.forEach(({ url, isDead, archiveUrl }) => results.set(url, { isDead, archiveUrl }));
+    checks.forEach(({ url, isDead, archiveUrl, statusCode }) => results.set(url, { isDead, archiveUrl, statusCode }));
     onProgress?.(Math.min(i + batchSize, urls.length), urls.length);
   }
   
   return results;
+}
+
+export const MAX_LINK_CHECKS = 50;
+
+// Appends one health-check entry, keeping only the most recent ones so
+// long-lived links don't grow storage unbounded.
+export function appendCheck(
+  link: SavedLink,
+  status: LinkCheckStatus,
+  statusCode?: number,
+  at: number = Date.now()
+): SavedLink {
+  const entry = statusCode === undefined
+    ? { checkedAt: at, status }
+    : { checkedAt: at, status, statusCode };
+  return { ...link, checks: [...(link.checks ?? []), entry].slice(-MAX_LINK_CHECKS) };
 }

@@ -5,6 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useTranslation } from 'react-i18next';
 import { useLinkStore } from '@/store/linkStore';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useCollectionStore } from '@/store/collectionStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useThemeStore } from '@/store/themeStore';
 import { LinkInput } from '@/components/LinkInput';
@@ -21,6 +22,8 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const { links, loadLinks, checkDeadLinks, removeLink, checkProgress, batchDelete, batchUpdateCategory, batchCheckDeadLinks } = useLinkStore();
   const { categories, loadCategories, loaded } = useCategoryStore();
+  const { collections, loadCollections } = useCollectionStore();
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const isDark = useThemeStore((s) => s.theme.isDark); // re-render on theme change
   const c = COLORS;
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -44,12 +47,18 @@ export default function HomeScreen() {
   useEffect(() => {
     loadLinks();
     loadCategories();
+    loadCollections();
   }, []);
 
   const filteredLinks = links
     .filter((l) => (showFavoritesOnly ? l.isFavorite : true))
     .filter((l) => (showRemindersOnly ? isReminder(l) : true))
     .filter((l) => (selectedCategory ? l.category === selectedCategory : true))
+    .filter((l) => {
+      if (!selectedCollection) return true;
+      const col = collections.find((cc) => cc.id === selectedCollection);
+      return col ? col.linkIds.includes(l.id) : true;
+    })
     .filter((l) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
@@ -261,14 +270,15 @@ export default function HomeScreen() {
             contentContainerStyle={styles.filterContent}
           >
             <TouchableOpacity
-              style={[styles.filterChip, { borderColor: c.border }, selectedCategory === null && !showFavoritesOnly && !showRemindersOnly && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+              style={[styles.filterChip, { borderColor: c.border }, selectedCategory === null && selectedCollection === null && !showFavoritesOnly && !showRemindersOnly && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
               onPress={() => {
                 setSelectedCategory(null);
+                setSelectedCollection(null);
                 setShowFavoritesOnly(false);
                 setShowRemindersOnly(false);
               }}
             >
-              <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === null && !showFavoritesOnly && { color: c.primary }]}>{t('common.all')}</Text>
+              <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === null && selectedCollection === null && !showFavoritesOnly && { color: c.primary }]}>{t('common.all')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.filterChip, { borderColor: c.border }, showFavoritesOnly && { borderColor: c.warning, backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)' }]}
@@ -293,11 +303,30 @@ export default function HomeScreen() {
                   style={[styles.filterChip, { borderColor: c.border }, selectedCategory === cat.id && { borderColor: cat.color, backgroundColor: cat.color + (isDark ? '33' : '20') }]}
                   onPress={() => {
                     setShowRemindersOnly(false);
+                    setSelectedCollection(null);
                     setSelectedCategory(cat.id === selectedCategory ? null : cat.id);
                   }}
                 >
                   <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCategory === cat.id && { color: cat.color }]}>
                     {cat.name} ({count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {collections.map((col) => {
+              if (col.linkIds.length === 0) return null;
+              const count = col.linkIds.filter((id) => links.some((l) => l.id === id)).length;
+              return (
+                <TouchableOpacity
+                  key={col.id}
+                  style={[styles.filterChip, { borderColor: c.border }, selectedCollection === col.id && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
+                  onPress={() => {
+                    setShowRemindersOnly(false);
+                    setSelectedCollection(col.id === selectedCollection ? null : col.id);
+                  }}
+                >
+                  <Text style={[styles.filterChipText, { color: c.textMuted }, selectedCollection === col.id && { color: c.primary }]}>
+                    {col.name} ({count})
                   </Text>
                 </TouchableOpacity>
               );

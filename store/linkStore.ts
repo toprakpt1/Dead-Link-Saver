@@ -7,6 +7,10 @@ import { classifyLink } from '@/services/categoryClassifier';
 import { checkMultipleLinks } from '@/services/linkChecker';
 import { fetchPageSnapshot } from '@/services/snapshot';
 import { saveToWayback, looksLikeWaybackSnapshot } from '@/services/wayback';
+import { scheduleSnoozeNotification, cancelScheduledNotification } from '@/services/notifications';
+import i18n from '@/utils/i18n';
+import { appendCheck } from '@/services/linkChecker';
+import { useCollectionStore } from '@/store/collectionStore';
 import { FORGOTTEN_DAYS_THRESHOLD } from '@/utils/constants';
 
 export const TUTORIAL_SAMPLE_URL = 'https://reactnative.dev/docs/getting-started';
@@ -44,6 +48,17 @@ async function autoArchiveDeadLinks(deadIds: string[]): Promise<void> {
       archivingInFlight.delete(id);
     }
   }
+}
+
+// Maps a checker outcome to a stored health entry. Missing results (check
+// threw before a response) are recorded as 'error', never as alive.
+function recordCheckResult(
+  link: SavedLink,
+  isDead: boolean | undefined,
+  statusCode: number | undefined
+): SavedLink {
+  const status = statusCode === undefined ? 'error' : isDead ? 'dead' : 'alive';
+  return appendCheck(link, status, statusCode);
 }
 
 export const useLinkStore = create<LinkStore>((set, get) => ({
@@ -174,6 +189,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     const updatedLinks = get().links.filter((link) => link.id !== id);
     set({ links: updatedLinks });
     storage.saveLinks(updatedLinks);
+    useCollectionStore.getState().pruneLink(id);
   },
 
   softDelete: (id: string) => {
@@ -234,6 +250,7 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     const updatedLinks = get().links.filter((link) => !ids.includes(link.id));
     set({ links: updatedLinks });
     storage.saveLinks(updatedLinks);
+    ids.forEach((id) => useCollectionStore.getState().pruneLink(id));
   },
 
   batchUpdateCategory: (ids: string[], category) => {
@@ -261,11 +278,12 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
     const updatedLinks = allLinks.map((link) => {
       if (!ids.includes(link.id)) return link;
       const result = results.get(link.url);
+      const withCheck = recordCheckResult(link, result?.isDead, result?.statusCode);
       if (result?.isDead && !link.isDead) {
         deadIds.push(link.id);
-        return { ...link, isDead: true, archiveUrl: result.archiveUrl };
+        return { ...withCheck, isDead: true, archiveUrl: result.archiveUrl };
       }
-      return link;
+      return withCheck;
     });
 
     set({ links: updatedLinks, checkProgress: null });
@@ -275,6 +293,11 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
   },
 
   markAsOpened: (id: string) => {
+    const current = get().links.find((link) => link.id === id);
+    // Opening dismisses any pending snooze — the reminder served its purpose
+    if (current?.reminderId) {
+      void cancelScheduledNotification(current.reminderId);
+    }
     const updatedLinks = get().links.map((link) =>
       link.id === id
         ? {
@@ -282,6 +305,8 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
             lastOpenedAt: Date.now(),
             openCount: link.openCount + 1,
             status: link.status === 'unread' ? 'watched' : link.status,
+            remindAt: undefined,
+            reminderId: undefined,
           }
         : link
     );
@@ -303,17 +328,49 @@ export const useLinkStore = create<LinkStore>((set, get) => ({
 
     const updatedLinks = links.map((link) => {
       const result = results.get(link.url);
+      const withCheck = recordCheckResult(link, result?.isDead, result?.statusCode);
       if (result?.isDead && !link.isDead) {
         deadIds.push(link.id);
-        return { ...link, isDead: true, archiveUrl: result.archiveUrl };
+        return { ...withCheck, isDead: true, archiveUrl: result.archiveUrl };
       }
-      return link;
+      return withCheck;
     });
 
     set({ links: updatedLinks, checkProgress: null });
     await storage.saveLinks(updatedLinks);
     void autoArchiveDeadLinks(deadIds);
     return deadIds;
+  },
+
+  snoozeLink: async (id: string, atMs: number) => {
+    const link = get().links.find((l) => l.id === id);
+    if (!link) return;
+    if (link.reminderId) {
+      await cancelScheduledNotification(link.reminderId);
+    }
+    const reminderId = await scheduleSnoozeNotification(
+      id,
+      link.metadata.title || link.url,
+      i18n.t('snooze.body'),
+      atMs
+    );
+    const updatedLinks = get().links.map((l) =>
+      l.id === id ? { ...l, remindAt: atMs, reminderId: reminderId ?? undefined } : l
+    );
+    set({ links: updatedLinks });
+    await storage.saveLinks(updatedLinks);
+  },
+
+  clearReminder: async (id: string) => {
+    const link = get().links.find((l) => l.id === id);
+    if (link?.reminderId) {
+      await cancelScheduledNotification(link.reminderId);
+    }
+    const updatedLinks = get().links.map((l) =>
+      l.id === id ? { ...l, remindAt: undefined, reminderId: undefined } : l
+    );
+    set({ links: updatedLinks });
+    await storage.saveLinks(updatedLinks);
   },
 
   getForgottenLinks: () => {
