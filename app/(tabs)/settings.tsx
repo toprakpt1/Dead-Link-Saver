@@ -171,7 +171,12 @@ export default function SettingsScreen() {
   };
 
   const handleLocaleChange = async (locale: AppLocale) => {
-    await changeLocale(locale);
+    if (i18n.language === locale) return;
+    try {
+      await changeLocale(locale);
+    } catch (error) {
+      console.error('Failed to change locale:', error);
+    }
   };
 
   return (

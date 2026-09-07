@@ -5,14 +5,17 @@
 //   android:exported="false" for widget providers)
 // - Kotlin provider: reads widget-data.json from the app files dir (written
 //   by services/widgetSync.ts, no JS bridge needed) and renders the latest
-//   3 links. Row taps deep-link to deadlinksaver://link/<id>; the save
-//   button opens deadlinksaver:// and the foreground ClipboardPrompt handles
-//   the clipboard (Android 10+ blocks background clipboard reads, so the
-//   widget never reads it itself).
+//   5 links, dead first. Row taps deep-link to deadlinksaver://link/<id>;
+//   the action bar offers refresh (instant re-read, no 30-min wait), dead
+//   list (deadlinksaver://forgotten) and stats (deadlinksaver://stats);
+//   the save button opens deadlinksaver:// and the foreground
+//   ClipboardPrompt handles the clipboard (Android 10+ blocks background
+//   clipboard reads, so the widget never reads it itself).
 // - Layout / drawable / widget-info / strings resources.
 //
 // Refresh: updatePeriodMillis (30 min, OS-enforced minimum). The JSON file
-// is rewritten on every link change, so the widget is at most one tick stale.
+// is rewritten on every link change, so the widget is at most one tick stale;
+// the refresh button re-reads immediately on demand.
 const { withAndroidManifest, withDangerousMod } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
@@ -22,6 +25,7 @@ const PROVIDER_KT = `package __PKG__.widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -31,10 +35,24 @@ import __PKG__.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.Locale
 
 class DeadLinkWidgetProvider : AppWidgetProvider() {
+    companion object {
+        const val ACTION_REFRESH = "__PKG__.widget.action.REFRESH_WIDGETS"
+    }
+
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         for (widgetId in ids) updateWidget(context, manager, widgetId)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_REFRESH) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, DeadLinkWidgetProvider::class.java))
+            onUpdate(context, manager, ids)
+        }
     }
 
     private fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
@@ -42,15 +60,33 @@ class DeadLinkWidgetProvider : AppWidgetProvider() {
         val payload = readPayload(context)
         val links = payload.optJSONArray("links") ?: JSONArray()
         val deadCount = payload.optInt("deadCount", 0)
+        val totalCount = payload.optInt("totalCount", links.length())
+        val unreadCount = payload.optInt("unreadCount", 0)
+        val tr = Locale.getDefault().language == "tr"
 
         views.setOnClickPendingIntent(R.id.widget_header, appIntent(context, "deadlinksaver://", 200))
         views.setOnClickPendingIntent(R.id.widget_save_btn, appIntent(context, "deadlinksaver://", 201))
+        views.setOnClickPendingIntent(R.id.widget_refresh_btn, refreshIntent(context))
+        views.setOnClickPendingIntent(R.id.widget_dead_btn, appIntent(context, "deadlinksaver://forgotten", 202))
+        views.setOnClickPendingIntent(R.id.widget_stats_btn, appIntent(context, "deadlinksaver://stats", 203))
+
+        views.setTextViewText(R.id.widget_refresh_btn, if (tr) "Yenile" else "Refresh")
+        views.setTextViewText(R.id.widget_dead_btn, if (tr) "Ölüler" else "Dead")
+        views.setTextViewText(
+            R.id.widget_stats_btn,
+            if (tr) "$unreadCount okunmadı / $totalCount" else "$unreadCount unread / $totalCount"
+        )
+
         if (deadCount > 0) {
             views.setViewVisibility(R.id.widget_dead_badge, View.VISIBLE)
-            views.setTextViewText(R.id.widget_dead_badge, "$deadCount dead")
+            views.setTextViewText(R.id.widget_dead_badge, if (tr) "$deadCount ölü" else "$deadCount dead")
         } else {
             views.setViewVisibility(R.id.widget_dead_badge, View.GONE)
         }
+        val rows = intArrayOf(R.id.widget_row_0, R.id.widget_row_1, R.id.widget_row_2, R.id.widget_row_3, R.id.widget_row_4)
+        val titles = intArrayOf(R.id.widget_title_0, R.id.widget_title_1, R.id.widget_title_2, R.id.widget_title_3, R.id.widget_title_4)
+        val metas = intArrayOf(R.id.widget_meta_0, R.id.widget_meta_1, R.id.widget_meta_2, R.id.widget_meta_3, R.id.widget_meta_4)
+        var visible = 0
         for (i in rows.indices) {
             val item = links.optJSONObject(i)
             if (item == null) {
@@ -58,14 +94,23 @@ class DeadLinkWidgetProvider : AppWidgetProvider() {
             } else {
                 visible += 1
                 views.setViewVisibility(rows[i], View.VISIBLE)
-                val title = item.optString("title", "")
-                views.setTextViewText(titles[i], if (title.isEmpty()) item.optString("url", "") else title)
-                val meta = if (item.optBoolean("isDead", false)) "dead - tap for archive" else "tap to open"
+                val rawTitle = item.optString("title", "")
+                val base = if (rawTitle.isEmpty()) item.optString("url", "") else rawTitle
+                val dead = item.optBoolean("isDead", false)
+                val star = if (item.optBoolean("isFavorite", false)) "★ " else ""
+                views.setTextViewText(titles[i], star + base)
+                views.setTextColor(titles[i], if (dead) 0xFFFCA5A5.toInt() else 0xFFFFFBEB.toInt())
+                val meta = if (dead) {
+                    if (tr) "ölü - arşiv için dokun" else "dead - tap for archive"
+                } else {
+                    if (tr) "açmak için dokun" else "tap to open"
+                }
                 views.setTextViewText(metas[i], meta)
                 views.setOnClickPendingIntent(rows[i], appIntent(context, "deadlinksaver://link/" + item.optString("id", ""), 100 + i))
             }
         }
         views.setViewVisibility(R.id.widget_empty, if (visible == 0) View.VISIBLE else View.GONE)
+        views.setTextViewText(R.id.widget_empty, if (tr) "Henüz link yok - uygulamadan kaydet" else "No links yet - save one in the app")
         manager.updateAppWidget(widgetId, views)
     }
 
@@ -83,6 +128,12 @@ class DeadLinkWidgetProvider : AppWidgetProvider() {
         intent.setPackage(context.packageName)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return PendingIntent.getActivity(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    private fun refreshIntent(context: Context): PendingIntent {
+        val intent = Intent(context, DeadLinkWidgetProvider::class.java)
+        intent.action = ACTION_REFRESH
+        return PendingIntent.getBroadcast(context, 300, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 }
 `;
@@ -136,6 +187,59 @@ const LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
             android:textSize="12sp"
             android:textColor="#1C1917"
             android:backgroundTint="#F59E0B" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
+
+        <Button
+            android:id="@+id/widget_refresh_btn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="Refresh"
+            android:textSize="11sp"
+            android:textColor="#FFFBEB"
+            android:backgroundTint="#44403C" />
+
+        <Button
+            android:id="@+id/widget_dead_btn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="Dead"
+            android:textSize="11sp"
+            android:textColor="#FCA5A5"
+            android:backgroundTint="#44403C" />
+
+        <Button
+            android:id="@+id/widget_stats_btn"
+            android:layout_width="0dp"
+            android:layout_weight="1.4"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="Stats"
+            android:textSize="11sp"
+            android:textColor="#FFFBEB"
+            android:backgroundTint="#44403C" />
     </LinearLayout>
 
     <LinearLayout
@@ -219,6 +323,60 @@ const LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
             android:singleLine="true" />
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/widget_row_3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/widget_title_3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFBEB"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_meta_3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#A8A29E"
+            android:textSize="11sp"
+            android:singleLine="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_row_4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/widget_title_4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFBEB"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_meta_4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#A8A29E"
+            android:textSize="11sp"
+            android:singleLine="true" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/widget_empty"
         android:layout_width="match_parent"
@@ -242,20 +400,20 @@ const BG_XML = `<?xml version="1.0" encoding="utf-8"?>
 const INFO_XML = `<?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="110dp"
+    android:minHeight="180dp"
     android:targetCellWidth="4"
-    android:targetCellHeight="2"
+    android:targetCellHeight="3"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_dead_links"
     android:previewLayout="@layout/widget_dead_links"
     android:description="@string/dead_link_widget_desc"
-    android:resizeMode="horizontal"
+    android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />
 `;
 
 const STRINGS_XML = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="dead_link_widget_desc">Latest saved links with one-tap open</string>
+    <string name="dead_link_widget_desc">Latest saved links with refresh and quick actions</string>
 </resources>
 `;
 
