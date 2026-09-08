@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput, Alert, ScrollView, ActivityIndicator, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { Columns2, Columns3, AlignJustify, Trash2, Plus, RotateCw, Crown, ShieldCheck, RotateCcw, Palette, Languages } from 'lucide-react-native';
+import { Columns2, Columns3, AlignJustify, Trash2, Plus, RotateCw, Crown, ShieldCheck, RotateCcw, Palette, Languages, ChevronDown, Check } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import type { CardSize } from '@/store/types';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -14,7 +14,7 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { useThemeStore } from '@/store/themeStore';
 import { themes, type ThemeId } from '@/theme/themes';
 import { STORAGE_KEYS, MONETIZATION } from '@/utils/constants';
-import { changeLocale, type AppLocale } from '@/utils/i18n';
+import { changeLocale, SUPPORTED_LOCALES, type AppLocale } from '@/utils/i18n';
 import { hapticDelete } from '@/utils/haptics';
 import { BackupSection } from '@/components/BackupSection';
 import { RewardedGate } from '@/components/RewardedGate';
@@ -32,6 +32,10 @@ const THEME_OPTIONS: { id: ThemeId; labelKey: string }[] = [
   { id: 'paper', labelKey: 'settings.themePaper' },
   { id: 'graphite', labelKey: 'settings.themeGraphite' },
 ];
+
+function localeLabelKey(loc: AppLocale): string {
+  return `settings.language${loc[0].toUpperCase()}${loc.slice(1)}`;
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -60,6 +64,10 @@ export default function SettingsScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<'backup' | 'collections'>('backup');
   const [restoring, setRestoring] = useState(false);
+  const [langSheetVisible, setLangSheetVisible] = useState(false);
+  const currentLocale: AppLocale = (SUPPORTED_LOCALES as string[]).includes(i18n.language)
+    ? (i18n.language as AppLocale)
+    : 'en';
 
   useEffect(() => {
     loadCategories();
@@ -171,6 +179,7 @@ export default function SettingsScreen() {
   };
 
   const handleLocaleChange = async (locale: AppLocale) => {
+    setLangSheetVisible(false);
     if (i18n.language === locale) return;
     try {
       await changeLocale(locale);
@@ -264,21 +273,39 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: c.text }]}>{t('settings.language')}</Text>
         </View>
         <Text style={[styles.sectionSub, { color: c.textMuted }]}>{t('settings.languageDesc')}</Text>
-        <View style={styles.options}>
-          {(['en', 'tr'] as AppLocale[]).map((loc) => {
-            const selected = i18n.language === loc;
-            return (
-              <Pressable
-                key={loc}
-                onPress={() => handleLocaleChange(loc)}
-                style={[styles.option, { backgroundColor: c.background, borderColor: c.border }, selected && { borderColor: c.primary, backgroundColor: c.primaryMuted }]}
-              >
-                <Text style={[styles.optionLabel, { color: c.textMuted }, selected && { color: c.primary }]}>{loc === 'en' ? t('settings.languageEn') : t('settings.languageTr')}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Pressable
+          onPress={() => setLangSheetVisible(true)}
+          style={[styles.langSelector, { backgroundColor: c.background, borderColor: c.border }]}
+        >
+          <Text style={[styles.langSelectorText, { color: c.text }]}>{t(localeLabelKey(currentLocale))}</Text>
+          <ChevronDown size={18} color={c.textMuted} />
+        </Pressable>
       </View>
+
+      <Modal visible={langSheetVisible} transparent animationType="fade" onRequestClose={() => setLangSheetVisible(false)}>
+        <Pressable style={styles.sheetOverlay} onPress={() => setLangSheetVisible(false)}>
+          <View style={[styles.sheet, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Text style={[styles.sheetTitle, { color: c.text }]}>{t('settings.language')}</Text>
+            <ScrollView nestedScrollEnabled>
+              {SUPPORTED_LOCALES.map((loc) => {
+                const selected = loc === currentLocale;
+                return (
+                  <Pressable
+                    key={loc}
+                    onPress={() => handleLocaleChange(loc)}
+                    style={[styles.langRow, selected && { backgroundColor: c.primaryMuted }]}
+                  >
+                    <Text style={[styles.langRowText, { color: c.text }, selected && { color: c.primary }]}>
+                      {t(localeLabelKey(loc))}
+                    </Text>
+                    {selected && <Check size={18} color={c.primary} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
 
       <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border }]}>
         <Text style={[styles.sectionTitle, { color: c.text }]}>{t('settings.cardSize')}</Text>
@@ -533,4 +560,38 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   replayButtonText: { fontSize: 14, fontWeight: '600' },
+  langSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  langSelectorText: { fontSize: 14, fontWeight: '600' },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    maxHeight: '80%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    gap: 8,
+  },
+  sheetTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  langRowText: { fontSize: 15, fontWeight: '500' },
 });

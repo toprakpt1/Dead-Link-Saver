@@ -40,7 +40,7 @@ describe('initI18n', () => {
   });
 
   it('falls back to english for an unsupported saved locale', async () => {
-    await AsyncStorage.setItem(STORAGE_KEYS.LOCALE, 'fr');
+    await AsyncStorage.setItem(STORAGE_KEYS.LOCALE, 'sv');
     const { initI18n, default: i18n } = await import('@/utils/i18n');
     await initI18n();
     expect(i18n.language).toBe('en');
@@ -79,7 +79,7 @@ describe('getSavedLocale', () => {
   });
 
   it('returns null for an unsupported saved locale', async () => {
-    await AsyncStorage.setItem(STORAGE_KEYS.LOCALE, 'de');
+    await AsyncStorage.setItem(STORAGE_KEYS.LOCALE, 'sv');
     const { getSavedLocale } = await import('@/utils/i18n');
     await expect(getSavedLocale()).resolves.toBeNull();
   });

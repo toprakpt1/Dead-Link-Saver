@@ -6,19 +6,57 @@ import { STORAGE_KEYS } from './constants';
 
 import en from '@/locales/en.json';
 import tr from '@/locales/tr.json';
+import de from '@/locales/de.json';
+import fr from '@/locales/fr.json';
+import es from '@/locales/es.json';
+import pt from '@/locales/pt.json';
+import it from '@/locales/it.json';
+import ru from '@/locales/ru.json';
+import ar from '@/locales/ar.json';
+import hi from '@/locales/hi.json';
+import ja from '@/locales/ja.json';
+import ko from '@/locales/ko.json';
 
 export const resources = {
   en: { translation: en },
   tr: { translation: tr },
+  de: { translation: de },
+  fr: { translation: fr },
+  es: { translation: es },
+  pt: { translation: pt },
+  it: { translation: it },
+  ru: { translation: ru },
+  ar: { translation: ar },
+  hi: { translation: hi },
+  ja: { translation: ja },
+  ko: { translation: ko },
 } as const;
 
-export type AppLocale = keyof typeof resources; // 'en' | 'tr'
-export const SUPPORTED_LOCALES: AppLocale[] = ['en', 'tr'];
+export type AppLocale = keyof typeof resources;
+export const SUPPORTED_LOCALES: AppLocale[] = [
+  'en',
+  'tr',
+  'de',
+  'fr',
+  'es',
+  'pt',
+  'it',
+  'ru',
+  'ar',
+  'hi',
+  'ja',
+  'ko',
+];
 
 function getDeviceLocale(): AppLocale {
   const locales = Localization.getLocales();
-  const primary = locales[0]?.languageCode ?? 'en';
-  return (SUPPORTED_LOCALES as string[]).includes(primary) ? (primary as AppLocale) : 'en';
+  for (const locale of locales) {
+    const candidates = [locale.languageCode, locale.languageTag?.split('-')[0]];
+    for (const code of candidates) {
+      if (code && (SUPPORTED_LOCALES as string[]).includes(code)) return code as AppLocale;
+    }
+  }
+  return 'en';
 }
 
 let initialized = false;

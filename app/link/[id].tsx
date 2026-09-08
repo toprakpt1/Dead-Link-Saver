@@ -9,7 +9,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { PLATFORM_LABELS } from '@/utils/platforms';
 import { COLORS } from '@/utils/constants';
 import { formatDistanceToNow } from 'date-fns';
-import { tr as trLocale, enUS } from 'date-fns/locale';
+import { getDateFnsLocale } from '@/utils/dateLocale';
 import { useCollectionStore } from '@/store/collectionStore';
 
 function formatDate(timestamp: number): string {
@@ -26,7 +26,7 @@ export default function LinkReaderScreen() {
   const { t, i18n } = useTranslation();
   const link = useLinkStore((s) => s.links.find((l) => l.id === id));
   const { collections, loadCollections, toggleLinkInCollection } = useCollectionStore();
-  const dateLocale = i18n.language === 'tr' ? trLocale : enUS;
+  const dateLocale = getDateFnsLocale(i18n.language);
 
   useEffect(() => {
     loadCollections();

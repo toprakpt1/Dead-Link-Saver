@@ -147,31 +147,37 @@ export async function createExportFile(format: ExportFormat): Promise<string> {
   return writeExportFile(`${MONETIZATION.BACKUP_FILE_PREFIX}-${d}.${meta.ext}`, body);
 }
 
-export async function shareExport(format: ExportFormat): Promise<void> {
+export interface ShareStrings {
+  dialogTitle: string;
+  unavailableTitle: string;
+  unavailableMessage: (filePath: string) => string;
+}
+
+export async function shareExport(format: ExportFormat, strings: ShareStrings): Promise<void> {
   const uri = await createExportFile(format);
 
   // Android needs sharing available check
   if (Platform.OS === 'android' && !(await Sharing.isAvailableAsync())) {
-    Alert.alert('Paylaşım desteklenmiyor', `Dosya oluşturuldu: ${uri}`);
+    Alert.alert(strings.unavailableTitle, strings.unavailableMessage(uri));
     return;
   }
 
   const mime = format === 'json' ? 'application/json' : EXPORT_META[format].mime;
-  await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: 'Dışa aktar' });
+  await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: strings.dialogTitle });
 }
 
-export async function shareBackup(): Promise<void> {
+export async function shareBackup(strings: ShareStrings): Promise<void> {
   const uri = await createBackupFile();
 
   // Android needs sharing available check
   if (Platform.OS === 'android' && !(await Sharing.isAvailableAsync())) {
-    Alert.alert('Paylaşım desteklenmiyor', `Dosya oluşturuldu: ${uri}`);
+    Alert.alert(strings.unavailableTitle, strings.unavailableMessage(uri));
     return;
   }
 
   await Sharing.shareAsync(uri, {
     mimeType: 'application/json',
-    dialogTitle: 'Yedeği paylaş',
+    dialogTitle: strings.dialogTitle,
     UTI: 'public.json',
   });
 }
@@ -195,11 +201,11 @@ export async function pickAndRestoreBackup(): Promise<{ imported: number; skippe
   try {
     parsed = JSON.parse(content) as unknown;
   } catch {
-    throw new Error('Geçersiz yedek dosyası');
+    throw new Error('INVALID_BACKUP_FILE');
   }
 
   if (!parsed || typeof parsed !== 'object' || !('links' in parsed) || !Array.isArray((parsed as { links: unknown }).links)) {
-    throw new Error('Yedek formatı hatalı');
+    throw new Error('INVALID_BACKUP_SHAPE');
   }
 
   const payload = parsed as BackupPayload;

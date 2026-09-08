@@ -31,10 +31,15 @@ export function BackupSection({ onNeedGate, onNeedPro }: BackupSectionProps) {
       onNeedGate('backup');
       return;
     }
+    const strings = {
+      dialogTitle: t(format === 'json' ? 'backup.shareBackupTitle' : 'backup.exportDialogTitle'),
+      unavailableTitle: t('backup.shareUnavailableTitle'),
+      unavailableMessage: (filePath: string) => t('backup.shareUnavailableBody', { path: filePath }),
+    };
     setBusy('export');
     try {
-      if (format === 'json') await shareBackup();
-      else await shareExport(format);
+      if (format === 'json') await shareBackup(strings);
+      else await shareExport(format, strings);
       if (!isPro) await consumeBackup();
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('backup.errorCreate');
@@ -52,7 +57,12 @@ export function BackupSection({ onNeedGate, onNeedPro }: BackupSectionProps) {
       await loadLinks();
       Alert.alert(t('backup.restoredTitle'), t('backup.restoredBody', { imported: result.imported, skipped: result.skipped }));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : t('backup.errorRestore');
+      const msg =
+        e instanceof Error && e.message === 'INVALID_BACKUP_FILE'
+          ? t('backup.errorInvalidFile')
+          : e instanceof Error && e.message === 'INVALID_BACKUP_SHAPE'
+            ? t('backup.errorInvalidShape')
+            : t('backup.errorRestore');
       Alert.alert(t('common.error'), msg);
     } finally {
       setBusy(null);
@@ -124,9 +134,9 @@ const styles = StyleSheet.create({
   formatRow: { flexDirection: 'row', gap: 8 },
   formatChip: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   formatChipText: { fontSize: 12, fontWeight: '700' },
-  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10 },
-  primaryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  secondaryText: { fontWeight: '700', fontSize: 13 },
+  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 8, borderRadius: 10 },
+  primaryText: { color: '#fff', fontWeight: '700', fontSize: 13, flexShrink: 1, textAlign: 'center' },
+  secondaryText: { fontWeight: '700', fontSize: 13, flexShrink: 1, textAlign: 'center' },
   proCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 },
   proCtaText: { fontSize: 13, fontWeight: '600' },
 });

@@ -9,7 +9,7 @@ import { COLORS } from '@/utils/constants';
 import { PLATFORM_ICONS, PLATFORM_LABELS, PLATFORM_COLORS } from '@/utils/platforms';
 import type { LinkPlatform, SavedLink } from '@/store/types';
 import { formatDistanceToNow } from 'date-fns';
-import { tr as trLocale, enUS } from 'date-fns/locale';
+import { getDateFnsLocale } from '@/utils/dateLocale';
 
 const ALL_PLATFORMS: LinkPlatform[] = [
   'youtube', 'reddit', 'twitter', 'github', 'instagram', 'medium',
@@ -51,7 +51,7 @@ export default function StatsScreen() {
     return acc;
   }, {});
 
-  const dateLocale = i18n.language === 'tr' ? trLocale : enUS;
+  const dateLocale = getDateFnsLocale(i18n.language);
   const totalChecks = links.reduce((n, l) => n + (l.checks?.length ?? 0), 0);
   const healthRows = links
     .map((link) => {

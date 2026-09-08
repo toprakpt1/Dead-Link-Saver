@@ -120,7 +120,7 @@ describe('pickAndRestoreBackup', () => {
       assets: [{ uri: 'file:///x.json' }],
     });
     fileSystemMock.readAsStringAsync.mockResolvedValueOnce('this is not json');
-    await expect(pickAndRestoreBackup()).rejects.toThrow('Geçersiz yedek dosyası');
+    await expect(pickAndRestoreBackup()).rejects.toThrow('INVALID_BACKUP_FILE');
   });
 
   it('throws on a payload without links', async () => {
@@ -129,7 +129,7 @@ describe('pickAndRestoreBackup', () => {
       assets: [{ uri: 'file:///x.json' }],
     });
     fileSystemMock.readAsStringAsync.mockResolvedValueOnce(JSON.stringify({ foo: 1 }));
-    await expect(pickAndRestoreBackup()).rejects.toThrow('Yedek formatı hatalı');
+    await expect(pickAndRestoreBackup()).rejects.toThrow('INVALID_BACKUP_SHAPE');
   });
 
   it('imports new links and skips duplicates and malformed entries', async () => {
@@ -228,21 +228,28 @@ describe('pickAndRestoreBackup', () => {
 });
 
 describe('shareBackup', () => {
+  const STRINGS = {
+    dialogTitle: 'dlg',
+    unavailableTitle: 'no-share',
+    unavailableMessage: (p: string) => `saved:${p}`,
+  };
+
   it('shows an alert on android when sharing is unavailable', async () => {
     sharingMock.isAvailableAsync.mockResolvedValueOnce(false);
     storageMock.loadLinks.mockResolvedValueOnce([]);
-    await shareBackup();
-    expect(rnMock.Alert.alert).toHaveBeenCalled();
+    await shareBackup(STRINGS);
+    expect(rnMock.Alert.alert).toHaveBeenCalledWith('no-share', expect.stringContaining('saved:'));
     expect(sharingMock.shareAsync).not.toHaveBeenCalled();
   });
 
   it('shares the backup file when sharing is available', async () => {
     sharingMock.isAvailableAsync.mockResolvedValueOnce(true);
     storageMock.loadLinks.mockResolvedValueOnce([]);
-    await shareBackup();
+    await shareBackup(STRINGS);
     expect(sharingMock.shareAsync).toHaveBeenCalledTimes(1);
     expect(sharingMock.shareAsync.mock.calls[0][1]).toMatchObject({
       mimeType: 'application/json',
+      dialogTitle: 'dlg',
     });
   });
 });
