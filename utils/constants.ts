@@ -1,13 +1,21 @@
-import { themes, type ThemeColors } from '@/theme/themes';
+import { themes, type Theme, type ThemeColors } from '@/theme/themes';
 
 const fallback: ThemeColors = themes.midnight.colors;
 
+// Theme resolver, registered by store/themeStore on init. This replaced a
+// lazy require() of the store, which created a Metro require cycle
+// (themeStore -> constants -> themeStore) with uninitialized-value risk.
+type ThemeResolver = () => Theme | null;
+let resolveTheme: ThemeResolver | null = null;
+
+export function registerThemeResolver(fn: ThemeResolver): void {
+  resolveTheme = fn;
+}
+
 function getCurrentColors(): ThemeColors {
   try {
-    // Avoid circular import: themeStore imports STORAGE_KEYS from here, so lazy-require
-    const req = require('@/store/themeStore') as typeof import('@/store/themeStore');
-    const state = req.useThemeStore.getState?.();
-    if (state?.theme?.colors) return state.theme.colors as ThemeColors;
+    const theme = resolveTheme?.();
+    if (theme?.colors) return theme.colors as ThemeColors;
   } catch {
     // before store init
   }
@@ -16,9 +24,8 @@ function getCurrentColors(): ThemeColors {
 
 function getCurrentIsDark(): boolean {
   try {
-    const req = require('@/store/themeStore') as typeof import('@/store/themeStore');
-    const state = req.useThemeStore.getState?.();
-    if (state?.theme) return state.theme.isDark;
+    const theme = resolveTheme?.();
+    if (theme) return theme.isDark;
   } catch {
     return true;
   }

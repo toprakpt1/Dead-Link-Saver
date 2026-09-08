@@ -2,10 +2,12 @@ import { Tabs } from 'expo-router';
 import { Bookmark, Clock, Sliders, ChartColumn } from 'lucide-react-native';
 import { useThemeStore } from '@/store/themeStore';
 import { useTranslation } from 'react-i18next';
+import { useReduceMotion } from '@/utils/motion';
 
 export default function TabLayout() {
   const { theme } = useThemeStore();
   const { t } = useTranslation();
+  const reduceMotion = useReduceMotion();
   const c = theme.colors;
   return (
     <Tabs
@@ -20,6 +22,8 @@ export default function TabLayout() {
         headerStyle: { backgroundColor: c.surface },
         headerTintColor: c.text,
         headerShadowVisible: false,
+        // Plain platform fade between tabs — no custom scene effects.
+        animation: reduceMotion ? 'none' : 'fade',
       }}
     >
       <Tabs.Screen

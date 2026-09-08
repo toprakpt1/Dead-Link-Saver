@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@/utils/constants';
+import { STORAGE_KEYS, registerThemeResolver } from '@/utils/constants';
 import { themes, type ThemeId, type Theme } from '@/theme/themes';
 
 const THEME_KEY = STORAGE_KEYS.THEME ?? '@dead_link_saver:theme';
@@ -38,6 +38,9 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     await AsyncStorage.setItem(THEME_KEY, id);
   },
 }));
+// Feed the COLORS proxy in utils/constants without importing the store back
+// (that reverse import was the require cycle). Runs once at module load.
+registerThemeResolver(() => useThemeStore.getState().theme);
 
 // Hook for components: keeps backwards compat with old COLORS import pattern
 export function useTheme() {

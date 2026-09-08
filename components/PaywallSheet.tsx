@@ -18,6 +18,9 @@ export function PaywallSheet({ visible, onClose, feature = 'general' }: PaywallS
   const [loading, setLoading] = useState(false);
   const purchasePro = useEntitlementStore((s) => s.purchasePro);
   const restorePurchases = useEntitlementStore((s) => s.restorePurchases);
+  const isPro = useEntitlementStore((s) => s.isPro);
+  const proTrialUntil = useEntitlementStore((s) => s.proTrialUntil);
+  const getRewardedRemaining = useEntitlementStore((s) => s.getRewardedRemaining);
   const isDark = useThemeStore((s) => s.theme.isDark);
   const c = COLORS;
 
@@ -65,9 +68,7 @@ export function PaywallSheet({ visible, onClose, feature = 'general' }: PaywallS
   };
 
   const trialAvailable =
-    !useEntitlementStore((s) => s.isPro) &&
-    !useEntitlementStore((s) => s.proTrialUntil !== null && s.proTrialUntil > Date.now()) &&
-    useEntitlementStore((s) => s.getRewardedRemaining()) > 0;
+    !isPro && !(proTrialUntil !== null && proTrialUntil > Date.now()) && getRewardedRemaining() > 0;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

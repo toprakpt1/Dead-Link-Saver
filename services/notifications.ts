@@ -1,10 +1,23 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+
+function isExpoGo(): boolean {
+  // Remote push was removed from Expo Go (SDK 53+); even permission/channel
+  // calls log errors there. Same mock-mode convention as ads/purchases.
+  const ownership = (Constants as { appOwnership?: string }).appOwnership;
+  const executionEnv = (Constants as { executionEnvironment?: string }).executionEnvironment;
+  return ownership === 'expo' || executionEnv === 'storeClient';
+}
 
 let handlerSet = false;
 
 export async function initNotifications(): Promise<boolean> {
+  if (isExpoGo()) {
+    console.log('[notifications] Expo Go detected - init skipped');
+    return false;
+  }
   if (!handlerSet) {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({

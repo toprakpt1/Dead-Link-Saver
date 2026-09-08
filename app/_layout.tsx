@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import '@/utils/i18n';
+import { MOTION } from '@/utils/motion';
 import { useLinkStore } from '@/store/linkStore';
 import { useThemeStore } from '@/store/themeStore';
 import { OnboardingTutorial } from '@/components/OnboardingTutorial';
@@ -103,9 +104,22 @@ export default function RootLayout() {
           headerTintColor: theme.colors.text,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: theme.colors.background },
+          animationDuration: MOTION.stackPushMs,
         }}
       >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+        {/* "Card lift": detail rises from the bottom like a lifted card, with a
+            slower settle. Content inside staggers in behind it
+            (see RiseIn in app/link/[id].tsx). */}
+        <Stack.Screen
+          name="link/[id]"
+          options={{
+            animation: 'slide_from_bottom',
+            animationDuration: MOTION.detailPresentMs,
+            gestureEnabled: true,
+          }}
+        />
+        <Stack.Screen name="+not-found" options={{ animation: 'fade', animationDuration: 200 }} />
       </Stack>
       <OnboardingTutorial />
       <UndoToast />
