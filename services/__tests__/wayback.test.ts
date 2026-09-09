@@ -28,12 +28,27 @@ describe('saveToWayback', () => {
     vi.runAllTimers(); // flush the 40s abort timeout
   });
 
-  it('encodes the url in the save request', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+  it('passes the raw url to the save endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500 });
     vi.stubGlobal('fetch', fetchMock);
     await saveToWayback('https://example.com/a b?x=1');
-    const calledUrl = fetchMock.mock.calls[0][0] as string;
-    expect(calledUrl).toBe('https://web.archive.org/save/https%3A%2F%2Fexample.com%2Fa%20b%3Fx%3D1');
+    const calledUrl = fetchMock.mock.calls[1][0] as string;
+    expect(calledUrl).toBe('https://web.archive.org/save/https://example.com/a b?x=1');
+  });
+
+  it('returns the existing snapshot without hitting save', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        archived_snapshots: { closest: { url: 'https://web.archive.org/web/20240101/https://example.com/known' } },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(saveToWayback('https://example.com/known')).resolves.toBe(
+      'https://web.archive.org/web/20240101/https://example.com/known'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

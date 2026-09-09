@@ -52,7 +52,7 @@ vi.mock('react-native', () => rnMock);
 vi.mock('@/utils/storage', () => ({ storage: storageMock }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createBackupFile, pickAndRestoreBackup, shareBackup, buildMarkdownExport, buildCsvExport, buildHtmlExport, createExportFile } from '@/services/backup';
+import { createBackupFile, pickAndRestoreBackup, shareBackup, buildMarkdownExport, buildCsvExport, buildHtmlExport, createExportFile, parseBookmarkHtml, bookmarkToSavedLink } from '@/services/backup';
 
 function makeLink(url: string, overrides: Partial<SavedLink> = {}): SavedLink {
   return {
@@ -224,6 +224,51 @@ describe('pickAndRestoreBackup', () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES);
     const stored = JSON.parse(raw ?? '[]') as Array<{ id: string }>;
     expect(stored.map((c) => c.id).sort()).toEqual(['gaming', 'news']);
+  });
+});
+
+describe('bookmark html import', () => {
+  const POCKET_HTML = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<TITLE>Bookmarks</TITLE><H1>Bookmarks</H1>
+<DL><p>
+<DT><A HREF="https://example.com/article" ADD_DATE="1700000000" TAGS="reading">Great Article</A>
+<DT><A HREF="https://youtu.be/dQw4w9WgXcQ">Video</A>
+<DT><A HREF="javascript:void(0)">Not a link</A>
+<DT><A HREF="https://example.com/article">Duplicate</A>
+</DL><p>`;
+
+  it('parses Pocket-style anchor exports and skips non-links', () => {
+    const parsed = parseBookmarkHtml(POCKET_HTML);
+    expect(parsed.map((b) => b.url)).toEqual([
+      'https://example.com/article',
+      'https://youtu.be/dQw4w9WgXcQ',
+    ]);
+    expect(parsed[0].title).toBe('Great Article');
+    expect(parsed[0].addedAt).toBe(1700000000 * 1000);
+  });
+
+  it('builds savable links with detected platforms', () => {
+    const link = bookmarkToSavedLink({ url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Video' }, 42);
+    expect(link.platform).toBe('youtube');
+    expect(link.metadata.title).toBe('Video');
+    expect(link.status).toBe('unread');
+    expect(link.openCount).toBe(0);
+  });
+
+  it('restores links from a bookmark file picked in the importer', async () => {
+    storageMock.loadLinks.mockResolvedValueOnce([makeLink('https://example.com/article')]);
+    documentPickerMock.getDocumentAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file:///pocket.html' }],
+    });
+    fileSystemMock.readAsStringAsync.mockResolvedValueOnce(POCKET_HTML);
+
+    await expect(pickAndRestoreBackup()).resolves.toEqual({ imported: 1, skipped: 1 });
+    const saved = storageMock.saveLinks.mock.calls[0][0] as SavedLink[];
+    expect(saved.map((l) => l.url).sort()).toEqual(
+      ['https://example.com/article', 'https://youtu.be/dQw4w9WgXcQ'].sort()
+    );
+    expect(saved.find((l) => l.url === 'https://youtu.be/dQw4w9WgXcQ')?.platform).toBe('youtube');
   });
 });
 

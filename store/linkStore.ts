@@ -22,8 +22,11 @@ const SNAPSHOT_PLATFORMS: LinkPlatform[] = ['article', 'medium', 'unknown'];
 const snapshotInFlight = new Set<string>();
 const archivingInFlight = new Set<string>();
 
-// Runs after a scan marks links dead: asks the Wayback Machine to preserve a
-// copy so the content isn't lost. Best-effort, never blocks or fails a scan.
+// Runs after a scan marks links dead: preserves a copy so the content isn't
+// lost. Wayback first (durable, shareable), then a local offline text copy —
+// the /save/ endpoint is rate-limited and sometimes walled, so the local
+// snapshot is what keeps the "saver" promise when archiving fails.
+// Best-effort, never blocks or fails a scan.
 async function autoArchiveDeadLinks(deadIds: string[]): Promise<void> {
   for (const id of deadIds) {
     const current = useLinkStore.getState();
@@ -41,6 +44,21 @@ async function autoArchiveDeadLinks(deadIds: string[]): Promise<void> {
         );
         useLinkStore.setState({ links: updatedLinks });
         await storage.saveLinks(updatedLinks);
+      }
+      // Wayback refused or failed: grab the page text itself while it may
+      // still (partially) load — a local copy beats no copy.
+      const after = useLinkStore.getState().links.find((l) => l.id === id);
+      if (after && !after.snapshot) {
+        try {
+          const text = await fetchPageSnapshot(after.url);
+          const withSnapshot = useLinkStore.getState().links.map((l) =>
+            l.id === id ? { ...l, snapshot: { text, capturedAt: Date.now() } } : l
+          );
+          useLinkStore.setState({ links: withSnapshot });
+          await storage.saveLinks(withSnapshot);
+        } catch {
+          // Offline copy is best-effort too
+        }
       }
     } catch {
       // Archiving is best-effort

@@ -27,9 +27,10 @@ describe('checkLinkStatus', () => {
     await expect(checkLinkStatus('https://example.com/ok')).resolves.toEqual({ isDead: false, statusCode: 200 });
   });
 
-  it('marks 404 as dead and fetches an archive url', async () => {
+  it('marks 404 as dead only after GET confirms, and fetches an archive url', async () => {
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(headResponse(404))
       .mockResolvedValueOnce(headResponse(404))
       .mockResolvedValueOnce(archiveResponse('https://web.archive.org/web/20240101/https://example.com/gone'));
     vi.stubGlobal('fetch', fetchMock);
@@ -38,20 +39,66 @@ describe('checkLinkStatus', () => {
       archiveUrl: 'https://web.archive.org/web/20240101/https://example.com/gone',
       statusCode: 404,
     });
+    expect(fetchMock.mock.calls[1][1]?.method).toBe('GET');
   });
 
-  it('marks 5xx as dead', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(headResponse(503)).mockResolvedValueOnce(archiveResponse()));
+  it('treats a HEAD 404 overruled by a GET wall as alive', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(headResponse(404))
+      .mockResolvedValueOnce(headResponse(403));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(checkLinkStatus('https://example.com/walled')).resolves.toEqual({
+      isDead: false,
+      statusCode: 403,
+    });
+  });
+
+  it('falls back to GET when HEAD is rejected or walled', async () => {
+    for (const headStatus of [403, 405, 429]) {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(headResponse(headStatus))
+        .mockResolvedValueOnce(headResponse(200));
+      vi.stubGlobal('fetch', fetchMock);
+      await expect(checkLinkStatus('https://example.com/alive')).resolves.toEqual({
+        isDead: false,
+        statusCode: 200,
+      });
+      expect(fetchMock.mock.calls[1][1]?.method).toBe('GET');
+    }
+  });
+
+  it('confirms a 5xx HEAD with GET before marking dead', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(headResponse(503))
+      .mockResolvedValueOnce(headResponse(503))
+      .mockResolvedValueOnce(archiveResponse());
+    vi.stubGlobal('fetch', fetchMock);
     const result = await checkLinkStatus('https://example.com/down');
     expect(result.isDead).toBe(true);
+    expect(result.statusCode).toBe(503);
+  });
+
+  it('treats a HEAD 503 overruled by a GET wall as alive', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(headResponse(503))
+      .mockResolvedValueOnce(headResponse(200));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(checkLinkStatus('https://example.com/flaky')).resolves.toEqual({
+      isDead: false,
+      statusCode: 200,
+    });
   });
 
   it('falls back to the search url when the archive lookup fails', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(headResponse(404))
+      .mockResolvedValueOnce(headResponse(404))
       .mockRejectedValueOnce(new Error('archive api down'));
-    vi.stubGlobal('fetch', fetchMock);
     await expect(checkLinkStatus('https://example.com/gone')).resolves.toEqual({
       isDead: true,
       archiveUrl: 'https://web.archive.org/web/*/https://example.com/gone',
@@ -100,6 +147,7 @@ describe('checkMultipleLinks', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(headResponse(200))
+      .mockResolvedValueOnce(headResponse(404))
       .mockResolvedValueOnce(headResponse(404))
       .mockResolvedValueOnce(archiveResponse('https://web.archive.org/web/20240101/https://example.com/gone'));
     vi.stubGlobal('fetch', fetchMock);

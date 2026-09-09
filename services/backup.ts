@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Platform, Alert } from 'react-native';
 import { storage } from '@/utils/storage';
+import { detectPlatform, cleanUrl } from './linkParser';
 import { MONETIZATION } from '@/utils/constants';
 import type { SavedLink, Category, Collection } from '@/store/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -182,9 +183,75 @@ export async function shareBackup(strings: ShareStrings): Promise<void> {
   });
 }
 
+export interface ParsedBookmark {
+  url: string;
+  title?: string;
+  addedAt?: number;
+}
+
+function decodeBookmarkEntities(input: string): string {
+  return input
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_m, code: string) => {
+      const cp = Number(code);
+      try {
+        return String.fromCodePoint(cp);
+      } catch {
+        return '';
+      }
+    });
+}
+
+/**
+ * Netscape bookmark format (<A HREF="..." ADD_DATE="...">title</A>) as
+ * exported by Pocket, Raindrop, and every browser. Lenient by design:
+ * skips javascript:/place: entries, keeps first-seen order, dedupes.
+ */
+export function parseBookmarkHtml(html: string): ParsedBookmark[] {
+  const seen = new Set<string>();
+  const out: ParsedBookmark[] = [];
+  const anchorRe = /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a\s*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = anchorRe.exec(html)) !== null) {
+    const rawUrl = (match[1] ?? match[2] ?? match[3] ?? '').trim();
+    if (!/^https?:\/\//i.test(rawUrl) || seen.has(rawUrl)) continue;
+    seen.add(rawUrl);
+    const addDate = /add_date\s*=\s*"?(\d+)"?/i.exec(match[0]);
+    const title = decodeBookmarkEntities(match[4].replace(/<[^>]*>/g, '').trim()).slice(0, 300);
+    out.push({
+      url: rawUrl,
+      title: title || undefined,
+      addedAt: addDate ? Number(addDate[1]) * 1000 : undefined,
+    });
+  }
+  return out;
+}
+
+export function bookmarkToSavedLink(bookmark: ParsedBookmark, at: number = Date.now()): SavedLink {
+  const url = cleanUrl(bookmark.url);
+  const title = bookmark.title || url;
+  return {
+    id: `${bookmark.addedAt || at}-${Math.random().toString(36).slice(2, 8)}`,
+    url,
+    platform: detectPlatform(url),
+    category: 'random',
+    status: 'unread',
+    metadata: { title },
+    isDead: false,
+    isFavorite: false,
+    createdAt: bookmark.addedAt || at,
+    openCount: 0,
+  };
+}
+
 export async function pickAndRestoreBackup(): Promise<{ imported: number; skipped: number }> {
   const res = await DocumentPicker.getDocumentAsync({
-    type: ['application/json', 'text/plain', '*/*'],
+    type: ['application/json', 'text/html', 'text/plain', '*/*'],
     copyToCacheDirectory: true,
   });
 
@@ -197,19 +264,28 @@ export async function pickAndRestoreBackup(): Promise<{ imported: number; skippe
     encoding: FileSystem.EncodingType.UTF8,
   });
 
-  let parsed: unknown;
+  // Primary: our own JSON backup. Fallback: Netscape bookmark HTML
+  // (Pocket / browser exports) — the migration wave this exists for.
+  let incomingLinks: SavedLink[];
+  let payload: BackupPayload | null = null;
   try {
-    parsed = JSON.parse(content) as unknown;
-  } catch {
-    throw new Error('INVALID_BACKUP_FILE');
+    const parsed: unknown = JSON.parse(content);
+    if (!parsed || typeof parsed !== 'object' || !('links' in parsed) || !Array.isArray(parsed.links)) {
+      throw new Error('INVALID_BACKUP_SHAPE');
+    }
+    payload = parsed as BackupPayload;
+    incomingLinks = payload.links;
+  } catch (jsonError) {
+    if (/<a\b[^>]*\bhref\s*=/i.test(content)) {
+      const now = Date.now();
+      incomingLinks = parseBookmarkHtml(content).map((b) => bookmarkToSavedLink(b, now));
+      if (incomingLinks.length === 0) throw new Error('INVALID_BACKUP_FILE');
+    } else if (jsonError instanceof Error && jsonError.message === 'INVALID_BACKUP_SHAPE') {
+      throw jsonError;
+    } else {
+      throw new Error('INVALID_BACKUP_FILE');
+    }
   }
-
-  if (!parsed || typeof parsed !== 'object' || !('links' in parsed) || !Array.isArray((parsed as { links: unknown }).links)) {
-    throw new Error('INVALID_BACKUP_SHAPE');
-  }
-
-  const payload = parsed as BackupPayload;
-  const incomingLinks = payload.links;
 
   const existing = await storage.loadLinks();
   const existingUrls = new Set(existing.map((l) => l.url));
@@ -243,7 +319,7 @@ export async function pickAndRestoreBackup(): Promise<{ imported: number; skippe
   }
 
   // Categories: merge if present
-  if (payload.categories && Array.isArray(payload.categories)) {
+  if (payload?.categories && Array.isArray(payload.categories)) {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES);
       const current: Category[] = raw ? (JSON.parse(raw) as Category[]) : [];
@@ -259,7 +335,7 @@ export async function pickAndRestoreBackup(): Promise<{ imported: number; skippe
   }
 
   // Collections: merge if present (same tolerant pattern as categories)
-  if (payload.collections && Array.isArray(payload.collections)) {
+  if (payload?.collections && Array.isArray(payload.collections)) {
     try {
       const current = await readJsonArray<Collection>(STORAGE_KEYS.COLLECTIONS);
       const currentIds = new Set(current.map((c) => c.id));

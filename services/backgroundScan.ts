@@ -8,6 +8,13 @@ import i18n, { initI18n } from '@/utils/i18n';
 export const BG_SCAN_TASK = 'dead-link-weekly-scan';
 export const WEEK_SECONDS = 7 * 24 * 60 * 60;
 
+// Best-effort by OS design: Android OEMs (Xiaomi/Samsung especially) and iOS
+// routinely kill or defer background-fetch. Never promise "automatic
+// monitoring" — position the app as "checks on open + reminds", with this
+// task as a bonus that fires when the OS allows it.
+export const BACKGROUND_SCAN_IS_BEST_EFFORT = true;
+
+
 export interface BackgroundScanResult {
   checked: number;
   dead: number;
@@ -61,6 +68,9 @@ TaskManager.defineTask(BG_SCAN_TASK, async () => {
   }
 });
 
+// Best-effort registration: resolves true when the OS accepted the task,
+// which is NOT a delivery guarantee. Foreground scans (on app open) are the
+// reliable path — see performBackgroundScan callers.
 export async function registerBackgroundScan(): Promise<boolean> {
   try {
     const registered = await TaskManager.isTaskRegisteredAsync(BG_SCAN_TASK);

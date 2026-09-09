@@ -1,31 +1,113 @@
 import type { SavedLink, LinkCheckStatus } from '@/store/types';
 
-export async function checkLinkStatus(url: string): Promise<{ isDead: boolean; archiveUrl?: string; statusCode?: number }> {
+// Browser-like UA: bot walls (Medium, X, YouTube, Cloudflare-fronted blogs)
+// treat a bare bot token as hostile and answer HEAD with 403/503 for pages
+// that are perfectly alive. Same UA as the snapshot fetcher on purpose.
+const USER_AGENT =
+  'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
+const HEAD_TIMEOUT_MS = 10000;
+const GET_TIMEOUT_MS = 12000;
+
+export interface LinkCheckResult {
+  isDead: boolean;
+  archiveUrl?: string;
+  statusCode?: number;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DeadLinkSaver/1.0)',
-      },
-    });
-
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
     clearTimeout(timeoutId);
+  }
+}
 
-    const isDead = response.status === 404 || response.status >= 500;
+const HEAD_INIT: RequestInit = {
+  method: 'HEAD',
+  headers: { 'User-Agent': USER_AGENT },
+};
 
-    if (isDead) {
+// Range keeps the fallback cheap: headers decide, the body is dropped.
+const GET_INIT: RequestInit = {
+  method: 'GET',
+  redirect: 'follow',
+  headers: {
+    'User-Agent': USER_AGENT,
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    Range: 'bytes=0-2047',
+  },
+};
+
+// Only these mean "the page is gone". Everything else — 401/403/429
+// (login / bot / rate walls), 3xx, 2xx — means alive: a wall is not a grave.
+function isDeadStatus(status: number): boolean {
+  return status === 404 || status === 410 || status >= 500;
+}
+
+// HEAD outcomes that say nothing about liveness: the method was rejected
+// (405/501) or a wall answered (400/401/403/408/429). GET is the tiebreak.
+function needsGetFallback(status: number): boolean {
+  return (
+    status === 400 ||
+    status === 401 ||
+    status === 403 ||
+    status === 405 ||
+    status === 408 ||
+    status === 429 ||
+    status === 501
+  );
+}
+
+// Resolves the single status code a check is judged by. Never throws for a
+// definitive answer; throws only when no response was ever received (so the
+// caller records 'error', never 'dead').
+async function probeStatus(url: string): Promise<number> {
+  let headStatus: number;
+  try {
+    headStatus = (await fetchWithTimeout(url, HEAD_INIT, HEAD_TIMEOUT_MS)).status;
+  } catch {
+    // Edge dropped HEAD (offline, DNS, CORS) but GET may still go through —
+    // several hosts block HEAD at the edge while serving GET fine.
+    return (await fetchWithTimeout(url, GET_INIT, GET_TIMEOUT_MS)).status;
+  }
+
+  if (needsGetFallback(headStatus)) {
+    return (await fetchWithTimeout(url, GET_INIT, GET_TIMEOUT_MS)).status;
+  }
+
+  if (isDeadStatus(headStatus)) {
+    // HEAD claims dead: confirm with GET before condemning. Bot walls
+    // sometimes answer HEAD with 503 for alive pages.
+    try {
+      return (await fetchWithTimeout(url, GET_INIT, GET_TIMEOUT_MS)).status;
+    } catch {
+      // GET stayed silent after HEAD already spoke — keep HEAD's answer.
+      return headStatus;
+    }
+  }
+
+  return headStatus;
+}
+
+export async function checkLinkStatus(url: string): Promise<LinkCheckResult> {
+  try {
+    const status = await probeStatus(url);
+
+    // A wall on GET (403/429/...) overrules a dead-claiming HEAD: a challenge
+    // page is not a missing page. isDeadStatus is only true for 404/410/5xx.
+    if (isDeadStatus(status)) {
       const archiveUrl = await getArchiveUrl(url);
-      return { isDead: true, archiveUrl, statusCode: response.status };
+      return { isDead: true, archiveUrl, statusCode: status };
     }
 
-    return { isDead: false, statusCode: response.status };
+    return { isDead: false, statusCode: status };
   } catch (error) {
     console.error('Link check failed:', error);
-    // If check fails, assume link is alive (network issues, CORS, etc.)
+    // No response at all: surface without statusCode so the caller records
+    // 'error', never alive-or-dead on zero evidence.
     return { isDead: false };
   }
 }
